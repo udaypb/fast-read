@@ -15,10 +15,12 @@ export type LlmConfig = {
     condense?: string;
     analyze?: string;
   };
+  chunkSize?: number;
 };
 
 const DEFAULT_CONFIG: LlmConfig = {
-  mode: 'passthrough'
+  mode: 'passthrough',
+  chunkSize: 300
 };
 
 export function loadLlmConfig(): LlmConfig {
@@ -83,6 +85,14 @@ function applyEnvOverrides(config: LlmConfig): LlmConfig {
     const timeoutMs = Number(timeoutRaw);
     if (Number.isFinite(timeoutMs)) {
       next.openai = { ...(next.openai ?? {}), timeoutMs };
+    }
+  }
+
+  const chunkSizeRaw = process.env.LLM_CHUNK_SIZE;
+  if (chunkSizeRaw) {
+    const size = Number(chunkSizeRaw);
+    if (Number.isFinite(size) && size > 0) {
+      next.chunkSize = size;
     }
   }
 

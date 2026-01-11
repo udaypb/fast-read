@@ -1,8 +1,8 @@
-import type { DocRecord, Reel } from '../types';
-import type { LlmClient } from '../llm/types';
-import type { BackgroundSpec } from './backgrounds';
-import { getBackgroundCatalog, getBackgroundCatalogSummary } from './backgrounds';
-import { splitWords } from './text';
+import type { DocRecord, Reel } from '../types.js';
+import type { LlmClient } from '../llm/types.js';
+import type { BackgroundSpec } from './backgrounds.js';
+import { getBackgroundCatalog, getBackgroundCatalogSummary } from './backgrounds.js';
+import { splitWords } from './text.js';
 
 const TARGET_WPM = 300;
 const MIN_WORDS = 150;
@@ -34,6 +34,7 @@ function pickBackground(index: number, catalog: BackgroundSpec[]): BackgroundSpe
     intensity: 2,
     motion: 'slow',
     palette: 'mono',
+    keywords: ['calm', 'focused', 'clean', 'tech'],
     notes: 'Fallback background.'
   };
 }
@@ -101,9 +102,9 @@ function pickBackgroundBySentiment(
   const normalized = sentiment.toLowerCase();
   const key =
     normalized.includes('positive') ? 'positive' :
-    normalized.includes('negative') ? 'negative' :
-    normalized.includes('neutral') ? 'neutral' :
-    null;
+      normalized.includes('negative') ? 'negative' :
+        normalized.includes('neutral') ? 'neutral' :
+          null;
 
   if (!key) return null;
   const group = SENTIMENT_GROUPS[key];
@@ -157,95 +158,139 @@ export async function buildReels(options: {
   docId: string;
   text: string;
   llm: LlmClient;
+  chunkSize?: number;
   createdAt: string;
   version: number;
+  onReel?: (reel: Reel) => void;
 }): Promise<Reel[]> {
   const words = splitWords(options.text);
   const reels: Reel[] = [];
   const backgroundCatalog = getBackgroundCatalog();
   const backgroundSummary = getBackgroundCatalogSummary();
+  const chunkSize = options.chunkSize ?? TARGET_WORDS;
+
   let index = 0;
   let tokenCursor = 0;
+
+  // Pre-calculate chunks
+  const chunks: { text: string; size: number; start: number; end: number; index: number }[] = [];
 
   while (index < words.length) {
     const remaining = words.length - index;
     let size = remaining;
 
-    if (remaining > TARGET_WORDS) {
-      size = Math.min(TARGET_WORDS, MAX_WORDS);
+    if (remaining > chunkSize) {
+      size = Math.min(chunkSize, MAX_WORDS);
       const remainder = remaining - size;
       if (remainder > 0 && remainder < MIN_WORDS) {
         size = Math.max(MIN_WORDS, remaining - MIN_WORDS);
       }
-    } else if (remaining < MIN_WORDS && reels.length > 0) {
-      const previous = reels[reels.length - 1];
-      const extraWords = words.slice(index).join(' ');
-      previous.text = `${previous.text} ${extraWords}`.trim();
-      const updatedWordCount = splitWords(previous.text).length;
-      previous.wordCount = updatedWordCount;
-      previous.estDurationSec = estimateDuration(updatedWordCount);
-      previous.tokenEnd = tokenCursor + remaining - 1;
-      break;
     }
 
     const chunkWords = words.slice(index, index + size);
     const chunkText = chunkWords.join(' ');
-    const tokenStart = tokenCursor;
-    const tokenEnd = tokenCursor + size - 1;
-    const condensed = await options.llm.condense({
+    chunks.push({
       text: chunkText,
-      targetWords: size
+      size,
+      start: tokenCursor,
+      end: tokenCursor + size - 1,
+      index: chunks.length
     });
-    const reelText = condensed.text.trim();
-    const wordCount = splitWords(reelText).length;
-    const analysis = await analyzeReel(reelText, options.llm, backgroundSummary);
-    const background = selectBackground(analysis, backgroundCatalog, reels.length);
-    const reel: Reel = {
-      docId: options.docId,
-      reelId: `${options.docId}-${reels.length}`,
-      index: reels.length,
-      title: createTitle(reelText),
-      text: reelText,
-      backgroundId: background.id,
-      backgroundModule: background.module,
-      backgroundLabel: background.label,
-      backgroundDescription: background.description,
-      backgroundMoodTags: background.moodTags,
-      backgroundIntensity: background.intensity,
-      backgroundMotion: background.motion,
-      backgroundPalette: background.palette,
-      backgroundNotes: background.notes,
-      sentiment: analysis.sentiment,
-      analysisTags: analysis.tags,
-      analysisBackgroundId: analysis.backgroundId,
-      analysisBackgroundName: analysis.backgroundName,
-      analysisReason: analysis.reason,
-      tokenStart,
-      tokenEnd,
-      wordCount,
-      estDurationSec: estimateDuration(wordCount),
-      createdAt: options.createdAt,
-      version: options.version
-    };
 
-    reels.push(reel);
     index += size;
     tokenCursor += size;
   }
 
-  return reels;
+  // Process chunks with concurrency limit
+  const CONCURRENCY = 10;
+  const results: (Reel | null)[] = new Array(chunks.length).fill(null);
+  let activeCount = 0;
+  let chunkIndex = 0;
+
+  return new Promise<Reel[]>((resolve) => {
+    const processNext = async () => {
+      if (chunkIndex >= chunks.length && activeCount === 0) {
+        resolve(results.filter((r): r is Reel => r !== null));
+        return;
+      }
+
+      if (chunkIndex >= chunks.length) return;
+
+      while (activeCount < CONCURRENCY && chunkIndex < chunks.length) {
+        const i = chunkIndex++;
+        const chunk = chunks[i];
+        activeCount++;
+
+        // Start processing chunk
+        (async () => {
+          try {
+            const condensed = await options.llm.condense({
+              text: chunk.text,
+              targetWords: chunk.size
+            });
+            const reelText = condensed.text.trim();
+            const wordCount = splitWords(reelText).length;
+            const analysis = await analyzeReel(reelText, options.llm, backgroundSummary);
+            const background = selectBackground(analysis, backgroundCatalog, i);
+
+            const reel: Reel = {
+              docId: options.docId,
+              reelId: `${options.docId}-${i}`,
+              index: i,
+              title: createTitle(reelText),
+              text: reelText,
+              backgroundId: background.id,
+              backgroundModule: background.module,
+              backgroundLabel: background.label,
+              backgroundDescription: background.description,
+              backgroundMoodTags: background.moodTags,
+              backgroundIntensity: background.intensity,
+              backgroundMotion: background.motion,
+              backgroundPalette: background.palette,
+              backgroundNotes: background.notes,
+              sentiment: analysis.sentiment,
+              analysisTags: analysis.tags,
+              analysisBackgroundId: analysis.backgroundId,
+              analysisBackgroundName: analysis.backgroundName,
+              analysisReason: analysis.reason,
+              tokenStart: chunk.start,
+              tokenEnd: chunk.end,
+              wordCount,
+              estDurationSec: estimateDuration(wordCount),
+              createdAt: options.createdAt,
+              version: options.version
+            };
+
+            results[i] = reel;
+            if (options.onReel) {
+              options.onReel(reel);
+            }
+          } catch (err) {
+            console.error(`Failed to process chunk ${i}`, err);
+          } finally {
+            activeCount--;
+            processNext();
+          }
+        })();
+      }
+    };
+
+    processNext();
+  });
 }
 
 export function createDocRecord(options: {
   docId: string;
   text: string;
   reels: Reel[];
+  createdAt: string;
+  version: number;
 }): DocRecord {
   return {
     docId: options.docId,
     text: options.text,
     reels: options.reels,
-    createdAt: new Date().toISOString(),
-    version: 1
+    createdAt: options.createdAt,
+    version: options.version
   };
 }

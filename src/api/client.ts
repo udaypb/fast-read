@@ -1,4 +1,4 @@
-import type { DocCreateResponse, DocStatus, ReelPage } from './types';
+import type { DocCreateResponse, DocStatus, ReelPage, Reel } from './types';
 
 const DEFAULT_API_BASE = 'http://localhost:5174';
 
@@ -49,4 +49,33 @@ export async function getReelPage(docId: string, offset: number, limit: number):
   });
   const response = await fetch(`${apiBase()}/api/docs/${docId}/reels?${params.toString()}`);
   return handleJson<ReelPage>(response);
+}
+
+export function streamReels(docId: string, onReel: (reel: Reel) => void): () => void {
+  const url = `${apiBase()}/api/docs/${docId}/stream`;
+  const eventSource = new EventSource(url);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.reelId) {
+        onReel(data as Reel);
+      }
+    } catch (error) {
+      console.warn('Failed to parse SSE message:', error);
+    }
+  };
+
+  eventSource.addEventListener('done', () => {
+    eventSource.close();
+  });
+
+  eventSource.onerror = (error) => {
+    console.error('SSE error:', error);
+    eventSource.close();
+  };
+
+  return () => {
+    eventSource.close();
+  };
 }

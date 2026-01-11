@@ -113,6 +113,38 @@ export class ReelRail {
     }
   }
 
+  appendReel(reel: Reel): void {
+    if (this.status.parentNode === this.track) {
+      this.track.innerHTML = '';
+    }
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'reel-card';
+    card.dataset.reelId = reel.reelId;
+
+    const title = document.createElement('div');
+    title.className = 'reel-card-title';
+    title.textContent = reel.title;
+
+    const snippet = document.createElement('div');
+    snippet.className = 'reel-card-snippet';
+    snippet.textContent = formatSnippet(reel.text);
+
+    const meta = document.createElement('div');
+    meta.className = 'reel-card-meta';
+    meta.textContent = `${formatDuration(reel.estDurationSec)} · ${reel.wordCount} words`;
+
+    card.append(title, snippet, meta);
+    card.addEventListener('click', () => this.handlers.onSelect?.(reel));
+
+    this.track.append(card);
+
+    if (this.activeId === reel.reelId) {
+      card.classList.add('reel-card--active');
+    }
+  }
+
   setActive(reelId: string): void {
     this.activeId = reelId;
     const cards = Array.from(this.track.querySelectorAll<HTMLElement>('.reel-card'));

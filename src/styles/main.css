@@ -47,14 +47,16 @@ body {
 
 #app {
   position: relative;
-  height: 100vh;
+  min-height: 100vh;
   width: 100%;
   display: flex;
-  flex-direction: column; /* ✅ */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 24px;
-  overflow: hidden;
+  padding: 24px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   z-index: 1;
 }
 
@@ -64,6 +66,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .reader-backdrop {
@@ -141,10 +144,7 @@ body {
 }
 
 .controls-stack {
-  position: absolute;
-  bottom: 32px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -152,6 +152,8 @@ body {
   gap: 10px;
   width: var(--reader-width);
   pointer-events: none;
+  margin-top: 12px;
+  flex-shrink: 0;
 }
 
 .controls {

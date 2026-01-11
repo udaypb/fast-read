@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
+import EventEmitter from 'node:events';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 
-import type { DocRecord, DocStatus, ReelPage } from './types';
-import { loadLocalEnv } from './env';
-import { createLlmClient } from './llm/factory';
-import { buildReels } from './services/reels';
-import { extractTextFromPdf, normalizeText } from './services/text';
+import type { DocRecord, DocStatus, ReelPage, Reel } from './types.js';
+import { loadLocalEnv } from './env.js';
+import { createLlmClient } from './llm/factory.js';
+import { buildReels, createDocRecord } from './services/reels.js';
+import { extractTextFromPdf, normalizeText } from './services/text.js';
 
 loadLocalEnv();
 
@@ -19,6 +20,7 @@ app.use(express.json({ limit: '10mb' }));
 
 const docs = new Map<string, DocRecord>();
 const llmClient = createLlmClient();
+const eventBus = new EventEmitter();
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
@@ -45,28 +47,78 @@ app.post('/api/docs', upload.single('file'), async (req, res) => {
     const createdAt = new Date().toISOString();
     const version = 1;
 
-    const reels = await buildReels({
+    // Create initial record
+    const record = createDocRecord({
+      docId,
+      text,
+      reels: [],
+      createdAt,
+      version
+    });
+    docs.set(docId, record);
+
+    // Start background processing
+    void buildReels({
       docId,
       text,
       llm: llmClient,
       createdAt,
-      version
+      version,
+      onReel: (reel) => {
+        const doc = docs.get(docId);
+        if (doc) {
+          doc.reels.push(reel);
+        }
+        eventBus.emit(`reel:${docId}`, reel);
+      }
+    }).then((reels) => {
+      // Ensure consistency if needed, but streaming updates should cover it
+      console.log(`Finished processing doc ${docId}, total reels: ${reels.length}`);
+      eventBus.emit(`done:${docId}`);
     });
-
-    const record: DocRecord = {
-      docId,
-      text,
-      reels,
-      createdAt,
-      version
-    };
-
-    docs.set(docId, record);
 
     res.json({ docId });
   } catch (error) {
     res.status(500).json({ error: 'Failed to process document.' });
   }
+});
+
+app.get('/api/docs/:docId/stream', (req, res) => {
+  const { docId } = req.params;
+  const doc = docs.get(docId);
+
+  if (!doc) {
+    res.status(404).end();
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+
+  // Send existing reels first
+  for (const reel of doc.reels) {
+    res.write(`data: ${JSON.stringify(reel)}\n\n`);
+  }
+
+  const onReel = (reel: Reel) => {
+    res.write(`data: ${JSON.stringify(reel)}\n\n`);
+  };
+
+  const onDone = () => {
+    res.write('event: done\ndata: {}\n\n');
+    res.end();
+  };
+
+  eventBus.on(`reel:${docId}`, onReel);
+  eventBus.once(`done:${docId}`, onDone);
+
+  req.on('close', () => {
+    eventBus.off(`reel:${docId}`, onReel);
+    eventBus.off(`done:${docId}`, onDone);
+  });
 });
 
 app.get('/api/docs/:docId/status', (req, res) => {

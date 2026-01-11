@@ -3,7 +3,7 @@ import './styles/main.css';
 import { groupTokens } from './reader/Grouper';
 import { Reader } from './reader/Reader';
 import { tokenize } from './reader/Tokenizer';
-import { createDocFromFile, createDocFromText, getReelPage } from './api/client';
+import { createDocFromFile, createDocFromText, getReelPage, streamReels } from './api/client';
 import type { Reel, ReelPage } from './api/types';
 import { Background } from './ui/Background';
 import { Controls } from './ui/Controls';
@@ -192,7 +192,25 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
   try {
     const { docId } = await createDoc();
     resetReelState(docId);
-    await loadReelPage(0, 'start');
+
+    // Clear status manually for streaming
+    reelRail.setStatus(''); // Or handle inside ReelRail when appending
+
+    // Stream reels
+    const cancelStream = streamReels(docId, (reel) => {
+      reelRail.appendReel(reel);
+
+      // Auto-select first reel
+      if (!reelState.activeReelId && reel.index === 0) {
+        selectReel(reel, false);
+      }
+    });
+
+    // TODO: We might want to stop streaming eventually, but for now we let it run based on server events closing it
+    // or when the user navigates away (which isn't really a thing here yet).
+    // Storing cancelStream if needed.
+
+    reelRail.setLoading(false);
   } catch (error) {
     console.error(error);
     reelRail.setStatus('Unable to process document.');
