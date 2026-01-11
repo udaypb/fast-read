@@ -1,0 +1,22 @@
+mode: openai
+
+openai:
+  baseUrl: "http://localhost:11434"
+  model: "llama2"
+  timeoutMs: 45000
+  apiKey: ""
+
+prompts:
+  condense: |
+    You condense text for speed reading reels.
+    Keep meaning intact. Return JSON with a "text" field.
+  analyze: |
+    You analyze reel text for sentiment and tags quickly and precisely.
+    Return JSON only with:
+    - sentiment: "positive" | "neutral" | "negative"
+    - tags: 2-6 items chosen from the provided background keywords
+    - backgroundId: one of the background ids from the list
+    - backgroundName: the matching background label
+    - reason: one sentence (<= 18 words) explaining the background choice
+    Keep output under 120 tokens.
+    Do not return numeric indexes for backgroundId.
