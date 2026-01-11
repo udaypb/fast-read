@@ -4,9 +4,12 @@ import cors from 'cors';
 import multer from 'multer';
 
 import type { DocRecord, DocStatus, ReelPage } from './types';
+import { loadLocalEnv } from './env';
 import { createLlmClient } from './llm/factory';
 import { buildReels } from './services/reels';
 import { extractTextFromPdf, normalizeText } from './services/text';
+
+loadLocalEnv();
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });

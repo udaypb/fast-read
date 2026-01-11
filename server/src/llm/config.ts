@@ -23,18 +23,18 @@ const DEFAULT_CONFIG: LlmConfig = {
 
 export function loadLlmConfig(): LlmConfig {
   const configPath = resolveConfigPath();
-  if (!configPath) return { ...DEFAULT_CONFIG };
+  if (!configPath) return applyEnvOverrides({ ...DEFAULT_CONFIG });
 
   try {
     const raw = fs.readFileSync(configPath, 'utf8');
     const parsed = parse(raw) as LlmConfig;
     if (!parsed || typeof parsed !== 'object') {
-      return { ...DEFAULT_CONFIG };
+      return applyEnvOverrides({ ...DEFAULT_CONFIG });
     }
-    return { ...DEFAULT_CONFIG, ...parsed };
+    return applyEnvOverrides({ ...DEFAULT_CONFIG, ...parsed });
   } catch (error) {
     console.warn('Failed to load LLM config:', error);
-    return { ...DEFAULT_CONFIG };
+    return applyEnvOverrides({ ...DEFAULT_CONFIG });
   }
 }
 
@@ -53,4 +53,38 @@ function resolveConfigPath(): string | null {
   }
 
   return null;
+}
+
+function applyEnvOverrides(config: LlmConfig): LlmConfig {
+  const next: LlmConfig = { ...config, openai: { ...config.openai } };
+
+  const mode = process.env.LLM_MODE;
+  if (mode === 'openai' || mode === 'passthrough') {
+    next.mode = mode;
+  }
+
+  const baseUrl = process.env.LLM_BASE_URL;
+  if (baseUrl) {
+    next.openai = { ...(next.openai ?? {}), baseUrl };
+  }
+
+  const model = process.env.LLM_MODEL;
+  if (model) {
+    next.openai = { ...(next.openai ?? {}), model };
+  }
+
+  const apiKey = process.env.LLM_API_KEY;
+  if (apiKey !== undefined && apiKey !== '') {
+    next.openai = { ...(next.openai ?? {}), apiKey };
+  }
+
+  const timeoutRaw = process.env.LLM_TIMEOUT_MS;
+  if (timeoutRaw) {
+    const timeoutMs = Number(timeoutRaw);
+    if (Number.isFinite(timeoutMs)) {
+      next.openai = { ...(next.openai ?? {}), timeoutMs };
+    }
+  }
+
+  return next;
 }
