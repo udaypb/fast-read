@@ -1,5 +1,5 @@
-import type { AnalyzeRequest, AnalyzeResult, CondenseRequest, CondenseResult, LlmClient } from './types';
-import type { LlmConfig } from './config';
+import type { AnalyzeRequest, AnalyzeResult, CondenseRequest, CondenseResult, LlmClient } from './types.js';
+import type { LlmConfig } from './config.js';
 
 const DEFAULT_TEMPERATURE = 0.2;
 const ANALYZE_MAX_TOKENS = 120;
@@ -45,9 +45,31 @@ export class OpenAiClient implements LlmClient {
       ]
     };
 
+    console.log('[Condense] Prompt:', prompt);
     const response = await this.request(payload);
-    const text = extractJsonString(response)?.text;
-    return { text: typeof text === 'string' ? text : request.text };
+    console.log('[Condense] Response keys:', Object.keys(response));
+
+    const json = extractJsonString(response);
+
+    // Valid JSON? Use it.
+    if (json && typeof json.text === 'string') {
+      console.log('[Condense] Using JSON extracted content');
+      return {
+        text: json.text,
+        title: typeof json.title === 'string' ? json.title : undefined
+      };
+    }
+
+    // No valid JSON? Use raw content if available.
+    const raw = getResponseContent(response);
+    if (typeof raw === 'string') {
+      console.log('[Condense] Using raw content');
+      return { text: raw };
+    }
+
+    // Fallback to original text if everything failed
+    console.warn('[Condense] Falling back to original text.');
+    return { text: request.text };
   }
 
   async analyze(request: AnalyzeRequest): Promise<AnalyzeResult> {
@@ -102,7 +124,8 @@ export class OpenAiClient implements LlmClient {
 
       const data = (await response.json()) as Record<string, unknown>;
       console.log('LLM response:', data);
-      const content = data?.choices?.[0]?.message?.content;
+      // Safe access using any cast for unknown structure
+      const content = (data as any)?.choices?.[0]?.message?.content;
       if (typeof content === 'string') {
         console.log('LLM message content:', content);
       }
@@ -208,7 +231,8 @@ function extractLooseAnalysis(response: Record<string, unknown>): Record<string,
 }
 
 function getResponseContent(response: Record<string, unknown>): string | null {
-  const content = response?.choices?.[0]?.message?.content;
+  const choices = (response as any).choices;
+  const content = choices?.[0]?.message?.content;
   if (typeof content !== 'string') return null;
   return content.trim();
 }
@@ -231,9 +255,9 @@ function extractBackgroundId(parsed: Record<string, unknown> | null): string | u
     const obj = background as { id?: unknown; name?: unknown; label?: unknown; module?: unknown };
     const id = typeof obj.id === 'string' ? obj.id :
       typeof obj.name === 'string' ? obj.name :
-      typeof obj.label === 'string' ? obj.label :
-      typeof obj.module === 'string' ? obj.module :
-      undefined;
+        typeof obj.label === 'string' ? obj.label :
+          typeof obj.module === 'string' ? obj.module :
+            undefined;
     if (id) return normalizeBackgroundId(id);
   }
 

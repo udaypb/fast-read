@@ -26,14 +26,16 @@ export class Controls {
   private wpmValue: HTMLElement;
   private chunkInput: HTMLInputElement;
   private chunkValue: HTMLElement;
+  private transport: HTMLElement;
+  private sliders: HTMLElement;
   private handlers: Partial<ControlHandlers> = {};
 
   constructor(container: HTMLElement, initialWpm: number, initialChunkSize: number) {
     this.root = document.createElement('div');
     this.root.className = 'controls';
 
-    const transport = document.createElement('div');
-    transport.className = 'controls-transport';
+    this.transport = document.createElement('div');
+    this.transport.className = 'controls-transport';
 
     const restartButton = document.createElement('button');
     restartButton.className = 'control-button';
@@ -55,10 +57,10 @@ export class Controls {
     forwardButton.type = 'button';
     forwardButton.textContent = 'Forward';
 
-    transport.append(restartButton, rewindButton, this.playButton, forwardButton);
+    this.transport.append(restartButton, rewindButton, this.playButton, forwardButton);
 
-    const sliders = document.createElement('div');
-    sliders.className = 'controls-sliders';
+    this.sliders = document.createElement('div');
+    this.sliders.className = 'controls-sliders';
 
     const wpmWrap = document.createElement('div');
     wpmWrap.className = 'controls-slider';
@@ -120,9 +122,9 @@ export class Controls {
     chunkRow.append(chunkMinus, this.chunkInput, chunkPlus);
     chunkWrap.append(chunkRow, this.chunkValue);
 
-    sliders.append(wpmWrap, chunkWrap);
+    this.sliders.append(wpmWrap, chunkWrap);
 
-    this.root.append(transport, sliders);
+    this.root.append(this.transport, this.sliders);
     container.append(this.root);
 
     this.playButton.addEventListener('click', () => this.handlers.onPlayPause?.());
@@ -170,6 +172,17 @@ export class Controls {
   setChunkSize(size: number): void {
     this.chunkInput.value = String(size);
     this.chunkValue.textContent = formatWordCount(size);
+  }
+
+  // Removed setStyle
+
+
+  getElement(): HTMLElement {
+    return this.root;
+  }
+
+  getSlidersElement(): HTMLElement {
+    return this.sliders;
   }
 
   private updateWpm(): void {

@@ -73,6 +73,10 @@ export class SeekBar {
     });
   }
 
+  getElement(): HTMLElement {
+    return this.root;
+  }
+
   bind(handlers: SeekBarHandlers): void {
     this.handlers = handlers;
   }

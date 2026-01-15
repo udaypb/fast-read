@@ -113,6 +113,40 @@ export class ReelRail {
     }
   }
 
+  private cookingCard: HTMLElement | null = null;
+
+  setCooking(isCooking: boolean): void {
+    if (isCooking) {
+      if (this.cookingCard) return; // Already cooking
+      // Clear status message if it's the only thing there
+      if (this.status.parentNode === this.track) {
+        this.track.innerHTML = '';
+      }
+
+      this.cookingCard = document.createElement('div');
+      this.cookingCard.className = 'reel-card-cooking';
+
+      const icon = document.createElement('div');
+      icon.className = 'cooking-icon';
+      icon.textContent = '🍳'; // Simple egg in pan or similar
+
+      const text = document.createElement('div');
+      text.className = 'cooking-text';
+      text.textContent = 'Cooking up reels...';
+
+      this.cookingCard.append(icon, text);
+      this.track.append(this.cookingCard);
+
+      // Scroll into view if needed
+      this.cookingCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    } else {
+      if (this.cookingCard) {
+        this.cookingCard.remove();
+        this.cookingCard = null;
+      }
+    }
+  }
+
   appendReel(reel: Reel): void {
     if (this.status.parentNode === this.track) {
       this.track.innerHTML = '';
@@ -138,7 +172,17 @@ export class ReelRail {
     card.append(title, snippet, meta);
     card.addEventListener('click', () => this.handlers.onSelect?.(reel));
 
-    this.track.append(card);
+    // Insert before cooking card if it exists
+    if (this.cookingCard && this.track.contains(this.cookingCard)) {
+      this.track.insertBefore(card, this.cookingCard);
+      // Auto-scroll to the new item or keep cooking in view?
+      // User says "shift that animation to the right of each reel received"
+      // implying the list grows to the left of the animation.
+      // Usually better to keep the latest content visible or just append.
+      // this.cookingCard.scrollIntoView({ behavior: 'smooth', inline: 'nearest' });
+    } else {
+      this.track.append(card);
+    }
 
     if (this.activeId === reel.reelId) {
       card.classList.add('reel-card--active');
@@ -152,6 +196,14 @@ export class ReelRail {
       const isActive = card.dataset.reelId === reelId;
       card.classList.toggle('reel-card--active', isActive);
     });
+  }
+
+  hide(): void {
+    this.root.classList.add('reel-rail--hidden');
+  }
+
+  show(): void {
+    this.root.classList.remove('reel-rail--hidden');
   }
 
   private handleScroll(): void {

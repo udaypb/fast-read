@@ -16,11 +16,21 @@ export type VantaOptions = {
   [key: string]: unknown;
 };
 
-export type VantaEffectFactory = (options: VantaOptions) => VantaEffect;
+export type VantaEffectFactory = (options: Record<string, unknown>) => VantaEffect;
+
+export enum BackgroundType {
+  Custom = 'custom',
+  Vanta = 'vanta',
+  Video = 'video'
+}
 
 export type BackgroundDefinition = {
   id: string;
   label: string;
-  load: () => Promise<VantaEffectFactory>;
+  type: BackgroundType;
+  load?: () => Promise<VantaEffectFactory>; // For vanta/p5
+  url?: string; // For image/video
+  thumbnail?: string;
   options?: Record<string, unknown>;
+  category?: 'calming' | 'cartoon' | 'real' | 'satisfying' | 'subway' | 'temple' | 'minecraft';
 };

@@ -51,7 +51,7 @@ export async function getReelPage(docId: string, offset: number, limit: number):
   return handleJson<ReelPage>(response);
 }
 
-export function streamReels(docId: string, onReel: (reel: Reel) => void): () => void {
+export function streamReels(docId: string, onReel: (reel: Reel) => void, onDone?: () => void): () => void {
   const url = `${apiBase()}/api/docs/${docId}/stream`;
   const eventSource = new EventSource(url);
 
@@ -68,6 +68,7 @@ export function streamReels(docId: string, onReel: (reel: Reel) => void): () => 
 
   eventSource.addEventListener('done', () => {
     eventSource.close();
+    onDone?.();
   });
 
   eventSource.onerror = (error) => {

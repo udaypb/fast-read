@@ -11,6 +11,8 @@ import { ImportDialog } from './ui/ImportDialog';
 import { ReelRail } from './ui/ReelRail';
 import { ReaderView } from './ui/ReaderView';
 import { SeekBar } from './ui/SeekBar';
+import { StyleSelector } from './ui/StyleSelector';
+import { backgroundCatalog } from './ui/backgrounds/catalog';
 
 const SAMPLE_TEXT =
   'Fast Read is a minimalist speed reading demo. It keeps the words steady, inside two calm guide bars, so your eyes stay centered. Use the controls to play, pause, or adjust the speed. Tap space to start, then arrow keys to jump or change pace.';
@@ -35,6 +37,7 @@ const frames = groupTokens(tokens, DEFAULT_CHUNK_SIZE);
 
 const importDialog = new ImportDialog(app);
 const reelRail = new ReelRail(app);
+reelRail.hide();
 reelRail.setStatus('Upload a PDF or paste text to load reels.');
 reelRail.setLoading(false);
 
@@ -51,8 +54,12 @@ const controlsStack = document.createElement('div');
 controlsStack.className = 'controls-stack';
 app.append(controlsStack);
 
-const seekBar = new SeekBar(controlsStack);
 const controls = new Controls(controlsStack, DEFAULT_WPM, DEFAULT_CHUNK_SIZE);
+const seekBar = new SeekBar(controls.getElement());
+controls.getElement().insertBefore(seekBar.getElement(), controls.getSlidersElement());
+const styleSelector = new StyleSelector(controlsStack);
+
+let activeStyle: string = 'calming';
 
 const reader = new Reader({
   frames,
@@ -82,6 +89,37 @@ controls.bind({
     const nextFrames = groupTokens(tokenize(activeText), size);
     reader.setFrames(nextFrames, { preservePosition: true });
     controls.setChunkSize(size);
+  }
+});
+
+styleSelector.bind((style, specificId) => {
+  activeStyle = style;
+
+  if (specificId) {
+    void background.setStyle(specificId);
+    return;
+  }
+
+  // Default behaviors when switching category only
+  if (activeStyle === 'cartoon') {
+    const cartoons = ['stickman', 'blobs', 'rain'];
+    const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
+    void background.setStyle(randomId);
+  } else if (activeStyle === 'calming') {
+    const currentReelId = reelState.activeReelId;
+    void background.setStyle('net');
+    const reel = reelState.currentPage?.reels.find(r => r.reelId === currentReelId);
+    if (reel) {
+      void background.setStyle(reel.backgroundId);
+    }
+  } else if (activeStyle === 'real') {
+    console.log('Real mode selected (placeholder)');
+  } else if (activeStyle === 'satisfying' || activeStyle === 'subway' || activeStyle === 'temple' || activeStyle === 'minecraft') {
+    // Auto-select first item if exists
+    const item = backgroundCatalog.find(b => b.category === activeStyle);
+    if (item) {
+      void background.setStyle(item.id);
+    }
   }
 });
 
@@ -194,27 +232,41 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
     resetReelState(docId);
 
     // Clear status manually for streaming
-    reelRail.setStatus(''); // Or handle inside ReelRail when appending
+    reelRail.setStatus('');
+    reelRail.show();
+    reelRail.setCooking(true); // Start cooking animation
+    importDialog.setMinimized(true);
+
+    let reelsReceived = 0;
 
     // Stream reels
-    const cancelStream = streamReels(docId, (reel) => {
-      reelRail.appendReel(reel);
+    const cancelStream = streamReels(
+      docId,
+      (reel) => {
+        reelsReceived++;
+        reelRail.appendReel(reel);
 
-      // Auto-select first reel
-      if (!reelState.activeReelId && reel.index === 0) {
-        selectReel(reel, false);
+        // Auto-select first reel
+        if (!reelState.activeReelId && reel.index === 0) {
+          selectReel(reel, false);
+        }
+      },
+      () => {
+        // onDone callback
+        reelRail.setCooking(false);
+        if (reelsReceived === 0) {
+          reelRail.setStatus('No reels were generated.');
+        }
       }
-    });
-
-    // TODO: We might want to stop streaming eventually, but for now we let it run based on server events closing it
-    // or when the user navigates away (which isn't really a thing here yet).
-    // Storing cancelStream if needed.
+    );
 
     reelRail.setLoading(false);
   } catch (error) {
     console.error(error);
-    reelRail.setStatus('Unable to process document.');
+    reelRail.show(); // Ensure it is visible to show the error
+    reelRail.setStatus('Failed to process, please try again.');
     reelRail.setLoading(false);
+    reelRail.setCooking(false);
   }
 }
 
@@ -252,10 +304,17 @@ function prefetchPage(offset: number | null): void {
 }
 
 function selectReel(reel: Reel, autoplay: boolean): void {
-  activeText = reel.text;
-  reelState.activeReelId = reel.reelId;
-  reelRail.setActive(reel.reelId);
-  void background.setStyle(reel.backgroundId);
+  // Apply background based on style
+  if (activeStyle === 'cartoon') {
+    // Pick a random cartoon background
+    // This is simple randomization. Ideally we'd keep it consistent per reel or have a sub-selector.
+    const cartoons = ['stickman', 'blobs', 'rain'];
+    const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
+    void background.setStyle(randomId);
+  } else if (activeStyle === 'calming') {
+    void background.setStyle(reel.backgroundId);
+  }
+  // 'real' mode falls through (or could have its own logic)
 
   const reelFrames = groupTokens(tokenize(reel.text), currentChunkSize);
   reader.setFrames(reelFrames, { preservePosition: false });

@@ -9,7 +9,14 @@ openai:
 prompts:
   condense: |
     You condense text for speed reading reels.
-    Keep meaning intact. Return JSON with a "text" field.
+    STRICT FORMATTING RULES:
+    - RETURN ONLY VALID JSON.
+    - JSON keys must be: "title" and "text".
+    - "title": A short, unique, and engaging title for this specific chunk (max 6 words).
+    - "text": The condensed content, plain text only.
+    - NO bullet points, NO special characters.
+    - Do NOT include any conversational preamble like "Here is the condensed...".
+    - OUTPUT MUST BE PARSABLE JSON ONLY.
   analyze: |
     You analyze reel text for sentiment and tags quickly and precisely.
     Return JSON only with:

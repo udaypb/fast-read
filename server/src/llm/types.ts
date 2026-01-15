@@ -5,6 +5,7 @@ export type CondenseRequest = {
 
 export type CondenseResult = {
   text: string;
+  title?: string;
 };
 
 export type AnalyzeRequest = {

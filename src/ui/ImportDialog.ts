@@ -171,6 +171,17 @@ export class ImportDialog {
 
     this.submitButton.disabled = count === 0 || count > MAX_WORDS;
   }
+  setMinimized(minimized: boolean): void {
+    this.root.classList.toggle('import-root--minimized', minimized);
+  }
+
+  show(): void {
+    this.root.style.display = 'flex';
+  }
+
+  hide(): void {
+    this.root.style.display = 'none';
+  }
 }
 
 function countWords(text: string): number {

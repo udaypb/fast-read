@@ -4,8 +4,21 @@
     "module": "vanta.net",
     "label": "Net",
     "description": "Connected lines and nodes, calm and structured.",
-    "moodTags": ["calm", "focused", "clean", "tech"],
-    "keywords": ["calm", "focused", "clean", "tech", "network", "grid", "structure"],
+    "moodTags": [
+      "calm",
+      "focused",
+      "clean",
+      "tech"
+    ],
+    "keywords": [
+      "calm",
+      "focused",
+      "clean",
+      "tech",
+      "network",
+      "grid",
+      "structure"
+    ],
     "intensity": 2,
     "motion": "slow",
     "palette": "mono",
@@ -16,8 +29,19 @@
     "module": "vanta.fog",
     "label": "Fog",
     "description": "Soft drifting fog, atmospheric and subdued.",
-    "moodTags": ["soft", "ambient", "moody"],
-    "keywords": ["soft", "ambient", "moody", "mist", "haze", "quiet"],
+    "moodTags": [
+      "soft",
+      "ambient",
+      "moody"
+    ],
+    "keywords": [
+      "soft",
+      "ambient",
+      "moody",
+      "mist",
+      "haze",
+      "quiet"
+    ],
     "intensity": 1,
     "motion": "slow",
     "palette": "cool",
@@ -28,8 +52,19 @@
     "module": "vanta.waves",
     "label": "Waves",
     "description": "Flowing wave surface, gentle motion.",
-    "moodTags": ["calm", "flow", "steady"],
-    "keywords": ["calm", "flow", "steady", "ocean", "wave", "rhythm"],
+    "moodTags": [
+      "calm",
+      "flow",
+      "steady"
+    ],
+    "keywords": [
+      "calm",
+      "flow",
+      "steady",
+      "ocean",
+      "wave",
+      "rhythm"
+    ],
     "intensity": 2,
     "motion": "medium",
     "palette": "cool",
@@ -40,8 +75,19 @@
     "module": "vanta.birds",
     "label": "Birds",
     "description": "Flying flock, lively and organic.",
-    "moodTags": ["energetic", "open", "uplifting"],
-    "keywords": ["energetic", "open", "uplifting", "flight", "movement", "dynamic"],
+    "moodTags": [
+      "energetic",
+      "open",
+      "uplifting"
+    ],
+    "keywords": [
+      "energetic",
+      "open",
+      "uplifting",
+      "flight",
+      "movement",
+      "dynamic"
+    ],
     "intensity": 4,
     "motion": "fast",
     "palette": "natural",
@@ -52,8 +98,19 @@
     "module": "vanta.halo",
     "label": "Halo",
     "description": "Glowing ring with subtle particles.",
-    "moodTags": ["focused", "futuristic", "clean"],
-    "keywords": ["focused", "futuristic", "clean", "glow", "aura", "center"],
+    "moodTags": [
+      "focused",
+      "futuristic",
+      "clean"
+    ],
+    "keywords": [
+      "focused",
+      "futuristic",
+      "clean",
+      "glow",
+      "aura",
+      "center"
+    ],
     "intensity": 3,
     "motion": "slow",
     "palette": "warm",
@@ -64,8 +121,19 @@
     "module": "vanta.globe",
     "label": "Globe",
     "description": "Rotating globe with lat/long lines.",
-    "moodTags": ["global", "exploratory", "tech"],
-    "keywords": ["global", "exploratory", "tech", "world", "orbit", "map"],
+    "moodTags": [
+      "global",
+      "exploratory",
+      "tech"
+    ],
+    "keywords": [
+      "global",
+      "exploratory",
+      "tech",
+      "world",
+      "orbit",
+      "map"
+    ],
     "intensity": 3,
     "motion": "medium",
     "palette": "cool",
@@ -76,8 +144,19 @@
     "module": "vanta.rings",
     "label": "Rings",
     "description": "Soft concentric rings with depth.",
-    "moodTags": ["focused", "minimal", "steady"],
-    "keywords": ["focused", "minimal", "steady", "circle", "orbit", "balance"],
+    "moodTags": [
+      "focused",
+      "minimal",
+      "steady"
+    ],
+    "keywords": [
+      "focused",
+      "minimal",
+      "steady",
+      "circle",
+      "orbit",
+      "balance"
+    ],
     "intensity": 2,
     "motion": "slow",
     "palette": "mono",
@@ -88,8 +167,19 @@
     "module": "vanta.cells",
     "label": "Cells",
     "description": "Organic cell structures, pulsing.",
-    "moodTags": ["organic", "curious", "dynamic"],
-    "keywords": ["organic", "dynamic", "pulse", "bio", "cell", "energy"],
+    "moodTags": [
+      "organic",
+      "curious",
+      "dynamic"
+    ],
+    "keywords": [
+      "organic",
+      "dynamic",
+      "pulse",
+      "bio",
+      "cell",
+      "energy"
+    ],
     "intensity": 4,
     "motion": "medium",
     "palette": "warm",
@@ -100,8 +190,19 @@
     "module": "vanta.dots",
     "label": "Dots",
     "description": "Dot field with subtle depth movement.",
-    "moodTags": ["quiet", "minimal", "clean"],
-    "keywords": ["quiet", "minimal", "clean", "stars", "field", "space"],
+    "moodTags": [
+      "quiet",
+      "minimal",
+      "clean"
+    ],
+    "keywords": [
+      "quiet",
+      "minimal",
+      "clean",
+      "stars",
+      "field",
+      "space"
+    ],
     "intensity": 1,
     "motion": "slow",
     "palette": "mono",
@@ -112,11 +213,229 @@
     "module": "vanta.topology",
     "label": "Topology",
     "description": "Soft terrain contours that drift.",
-    "moodTags": ["thoughtful", "ambient", "structured"],
-    "keywords": ["thoughtful", "ambient", "structured", "terrain", "contour", "map"],
+    "moodTags": [
+      "thoughtful",
+      "ambient",
+      "structured"
+    ],
+    "keywords": [
+      "thoughtful",
+      "ambient",
+      "structured",
+      "terrain",
+      "contour",
+      "map"
+    ],
     "intensity": 2,
     "motion": "slow",
     "palette": "cool",
     "notes": "Nice for explanatory content."
+  },
+  {
+    "id": "stickman",
+    "module": "custom",
+    "label": "Stickman",
+    "description": "Simple dancing stickmen, goofy and cartoonish.",
+    "moodTags": [
+      "silly",
+      "cartoon",
+      "fun"
+    ],
+    "keywords": [
+      "silly",
+      "cartoon",
+      "fun",
+      "dance",
+      "active",
+      "drawing"
+    ],
+    "intensity": 3,
+    "motion": "medium",
+    "palette": "mono",
+    "notes": "Cartoon category."
+  },
+  {
+    "id": "blobs",
+    "module": "custom",
+    "label": "Blobs",
+    "description": "Colorful bouncing blobs, bright and cheerful.",
+    "moodTags": [
+      "cheerful",
+      "playful",
+      "bright"
+    ],
+    "keywords": [
+      "cheerful",
+      "playful",
+      "bright",
+      "bounce",
+      "color",
+      "fun"
+    ],
+    "intensity": 3,
+    "motion": "medium",
+    "palette": "vibrant",
+    "notes": "Cartoon category."
+  },
+  {
+    "id": "rain",
+    "module": "custom",
+    "label": "Rain",
+    "description": "Stylized falling rain drops, techy and moody.",
+    "moodTags": [
+      "matrix",
+      "tech",
+      "rain"
+    ],
+    "keywords": [
+      "matrix",
+      "tech",
+      "rain",
+      "code",
+      "cyber",
+      "fall"
+    ],
+    "intensity": 2,
+    "motion": "medium",
+    "palette": "cool",
+    "notes": "Cartoon category."
+  },
+  {
+    "id": "satisfying_1",
+    "module": "video",
+    "label": "Satisfying Sand",
+    "description": "Smooth sand cutting, extremely relaxing and satisfying.",
+    "moodTags": [
+      "relaxing",
+      "satisfying",
+      "calm"
+    ],
+    "keywords": [
+      "relaxing",
+      "satisfying",
+      "calm",
+      "sand",
+      "texture",
+      "slow"
+    ],
+    "intensity": 1,
+    "motion": "slow",
+    "palette": "natural",
+    "notes": "Video category."
+  },
+  {
+    "id": "satisfying_2",
+    "module": "video",
+    "label": "Abstract Colors",
+    "description": "Flowing colorful paint or ink.",
+    "moodTags": [
+      "vibrant",
+      "artistic",
+      "fluid"
+    ],
+    "keywords": [
+      "vibrant",
+      "artistic",
+      "fluid",
+      "color",
+      "mesh",
+      "blend"
+    ],
+    "intensity": 3,
+    "motion": "medium",
+    "palette": "vibrant",
+    "notes": "Video category."
+  },
+  {
+    "id": "subway_1",
+    "module": "video",
+    "label": "Subway Surfers",
+    "description": "High-speed endless runner gameplay.",
+    "moodTags": [
+      "energetic",
+      "distraction",
+      "gaming"
+    ],
+    "keywords": [
+      "energetic",
+      "running",
+      "fast",
+      "gameplay",
+      "action",
+      "subway"
+    ],
+    "intensity": 5,
+    "motion": "fast",
+    "palette": "vibrant",
+    "notes": "Video category."
+  },
+  {
+    "id": "subway_2",
+    "module": "video",
+    "label": "Subway Runner",
+    "description": "Fast paced parkour on trains.",
+    "moodTags": [
+      "intense",
+      "active",
+      "speed"
+    ],
+    "keywords": [
+      "intense",
+      "active",
+      "speed",
+      "parkour",
+      "train",
+      "gold"
+    ],
+    "intensity": 5,
+    "motion": "fast",
+    "palette": "vibrant",
+    "notes": "Video category."
+  },
+  {
+    "id": "minecraft_1",
+    "module": "video",
+    "label": "Minecraft Parkour",
+    "description": "Smooth block-based parkour movement.",
+    "moodTags": [
+      "chill",
+      "steady",
+      "blocks"
+    ],
+    "keywords": [
+      "chill",
+      "steady",
+      "blocks",
+      "nature",
+      "minecraft",
+      "jump"
+    ],
+    "intensity": 3,
+    "motion": "medium",
+    "palette": "natural",
+    "notes": "Video category."
+  },
+  {
+    "id": "minecraft_2",
+    "module": "video",
+    "label": "Minecraft Flight",
+    "description": "Flying through blocky landscapes.",
+    "moodTags": [
+      "soaring",
+      "peaceful",
+      "infinite"
+    ],
+    "keywords": [
+      "soaring",
+      "peaceful",
+      "infinite",
+      "world",
+      "minecraft",
+      "sky"
+    ],
+    "intensity": 2,
+    "motion": "medium",
+    "palette": "natural",
+    "notes": "Video category."
   }
 ]

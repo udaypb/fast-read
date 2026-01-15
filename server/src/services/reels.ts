@@ -40,9 +40,9 @@ function pickBackground(index: number, catalog: BackgroundSpec[]): BackgroundSpe
 }
 
 const SENTIMENT_GROUPS: Record<string, string[]> = {
-  positive: ['birds', 'halo', 'waves'],
-  negative: ['fog', 'cells', 'topology'],
-  neutral: ['net', 'rings', 'dots', 'globe']
+  positive: ['birds', 'halo', 'waves', 'stickman', 'blobs', 'minecraft_2'],
+  negative: ['fog', 'cells', 'topology', 'rain'],
+  neutral: ['net', 'rings', 'dots', 'globe', 'satisfying_1', 'minecraft_1']
 };
 
 function normalizeKey(value: string): string {
@@ -237,7 +237,7 @@ export async function buildReels(options: {
               docId: options.docId,
               reelId: `${options.docId}-${i}`,
               index: i,
-              title: createTitle(reelText),
+              title: condensed.title || createTitle(reelText),
               text: reelText,
               backgroundId: background.id,
               backgroundModule: background.module,
