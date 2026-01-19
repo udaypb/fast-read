@@ -245,6 +245,17 @@ export const backgroundCatalog: BackgroundDefinition[] = [
     thumbnail: 'https://placehold.co/120x80/264653/FFF?text=MC3'
   },
 
+  {
+    id: 'intro',
+    label: 'Welcome',
+    load: wrapEffect(async () => {
+      await ensureP5();
+      return import('./dotWave');
+    }),
+    category: 'intro',
+    type: BackgroundType.Custom,
+    thumbnail: 'https://placehold.co/120x80/FFF/000?text=Welcome'
+  },
   // Temple Run (Keeping placeholder for now)
   {
     id: 'temple_1',

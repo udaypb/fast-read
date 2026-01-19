@@ -58,7 +58,7 @@ function resolveConfigPath(): string | null {
 }
 
 function applyEnvOverrides(config: LlmConfig): LlmConfig {
-  const next: LlmConfig = { ...config, openai: { ...config.openai } };
+  const next: LlmConfig = { ...config, openai: config.openai ? { ...config.openai } : undefined } as LlmConfig;
 
   const mode = process.env.LLM_MODE;
   if (mode === 'openai' || mode === 'passthrough') {
@@ -67,24 +67,24 @@ function applyEnvOverrides(config: LlmConfig): LlmConfig {
 
   const baseUrl = process.env.LLM_BASE_URL;
   if (baseUrl) {
-    next.openai = { ...(next.openai ?? {}), baseUrl };
+    next.openai = { ...(next.openai ?? {}), baseUrl } as any;
   }
 
   const model = process.env.LLM_MODEL;
   if (model) {
-    next.openai = { ...(next.openai ?? {}), model };
+    next.openai = { ...(next.openai ?? {}), model } as any;
   }
 
   const apiKey = process.env.LLM_API_KEY;
   if (apiKey !== undefined && apiKey !== '') {
-    next.openai = { ...(next.openai ?? {}), apiKey };
+    next.openai = { ...(next.openai ?? {}), apiKey } as any;
   }
 
   const timeoutRaw = process.env.LLM_TIMEOUT_MS;
   if (timeoutRaw) {
     const timeoutMs = Number(timeoutRaw);
     if (Number.isFinite(timeoutMs)) {
-      next.openai = { ...(next.openai ?? {}), timeoutMs };
+      next.openai = { ...(next.openai ?? {}), timeoutMs } as any;
     }
   }
 

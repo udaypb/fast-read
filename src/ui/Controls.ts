@@ -28,6 +28,7 @@ export class Controls {
   private chunkValue: HTMLElement;
   private transport: HTMLElement;
   private sliders: HTMLElement;
+  private cog: HTMLElement;
   private handlers: Partial<ControlHandlers> = {};
 
   constructor(container: HTMLElement, initialWpm: number, initialChunkSize: number) {
@@ -124,9 +125,28 @@ export class Controls {
 
     this.sliders.append(wpmWrap, chunkWrap);
 
-    this.root.append(this.transport, this.sliders);
-    container.append(this.root);
+    this.cog = document.createElement('div');
+    this.cog.className = 'controls-cog';
 
+    const cogIcon = document.createElement('span');
+    cogIcon.className = 'controls-cog-icon';
+    cogIcon.textContent = '⚙️';
+
+    const cogArrow = document.createElement('span');
+    cogArrow.className = 'controls-cog-arrow';
+    cogArrow.textContent = 'v'; // Default collapsed
+
+    this.cog.append(cogIcon, cogArrow);
+
+    this.root.append(this.transport, this.sliders);
+    container.append(this.root, this.cog);
+
+    this.setFocusMode(false);
+
+    this.cog.addEventListener('click', () => {
+      const isCurrentlyFocused = document.body.classList.contains('focus-mode');
+      this.setFocusMode(!isCurrentlyFocused);
+    });
     this.playButton.addEventListener('click', () => this.handlers.onPlayPause?.());
     restartButton.addEventListener('click', () => this.handlers.onRestart?.());
     rewindButton.addEventListener('click', () => this.handlers.onRewind?.());
@@ -172,6 +192,17 @@ export class Controls {
   setChunkSize(size: number): void {
     this.chunkInput.value = String(size);
     this.chunkValue.textContent = formatWordCount(size);
+  }
+
+  setFocusMode(enabled: boolean): void {
+    document.body.classList.toggle('focus-mode', enabled);
+    // When focus mode is NOT enabled, we are in "expanded" state from the cog's perspective
+    document.body.classList.toggle('focus-mode-expanded', !enabled);
+
+    const arrow = this.cog.querySelector('.controls-cog-arrow');
+    if (arrow) {
+      arrow.textContent = enabled ? 'v' : '^';
+    }
   }
 
   // Removed setStyle

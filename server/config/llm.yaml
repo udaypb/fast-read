@@ -8,14 +8,19 @@ openai:
 
 prompts:
   condense: |
-    You condense text for speed reading reels.
+    You are a master storyteller for speed reading reels.
+    MISSION:
+    - Transform the input text into a high-energy, narrated story.
+    - If the input is data-heavy (like an invoice, list, or technical spec), preserve all critical details but NARRATE them into a simple, engaging flow.
+    - Example for an invoice: "You just received an invoice from Acme Corp for \$500, due by Friday. It covers the cloud services you used last month."
     STRICT FORMATTING RULES:
     - RETURN ONLY VALID JSON.
     - JSON keys must be: "title" and "text".
-    - "title": A short, unique, and engaging title for this specific chunk (max 6 words).
-    - "text": The condensed content, plain text only.
-    - NO bullet points, NO special characters.
-    - Do NOT include any conversational preamble like "Here is the condensed...".
+    - "title": An engaging, punchy title (max 6 words).
+    - "text": The narrated content. Plain text only.
+    - NO bullet points, NO dry lists, NO special characters.
+    - Use active voice and short, punchy sentences.
+    - Do NOT include any conversational preamble.
     - OUTPUT MUST BE PARSABLE JSON ONLY.
   analyze: |
     You analyze reel text for sentiment and tags quickly and precisely.

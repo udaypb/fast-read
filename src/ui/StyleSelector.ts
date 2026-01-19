@@ -13,6 +13,10 @@ export class StyleSelector {
     private contentWrapper: HTMLElement;
     private isOpen = false;
 
+    public getElement(): HTMLElement {
+        return this.root;
+    }
+
     private categories = [
         { id: 'calming', label: 'Calming' },
         { id: 'cartoon', label: 'Cartoon' },
@@ -59,7 +63,7 @@ export class StyleSelector {
         container.append(this.root);
     }
 
-    private toggle(): void {
+    public toggle(): void {
         this.isOpen = !this.isOpen;
         if (this.isOpen) {
             this.root.classList.add('open');

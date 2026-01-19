@@ -34,7 +34,7 @@ export class OpenAiClient implements LlmClient {
 
   async condense(request: CondenseRequest): Promise<CondenseResult> {
     const prompt = this.prompts?.condense ??
-      'You condense text for speed reading reels. Return JSON with a "text" field.';
+      'You are a master storyteller for speed reading reels. Transform text into a high-energy narrated story. If data-heavy (like invoices), preserve details but narrate them into a simple flow. Return JSON with "title" and "text" fields. No bullet points.';
     const payload = {
       model: this.model,
       temperature: DEFAULT_TEMPERATURE,

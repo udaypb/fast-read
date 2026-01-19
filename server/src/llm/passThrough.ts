@@ -1,4 +1,4 @@
-import type { AnalyzeRequest, AnalyzeResult, CondenseRequest, CondenseResult, LlmClient } from './types';
+import type { AnalyzeRequest, AnalyzeResult, CondenseRequest, CondenseResult, LlmClient } from './types.js';
 
 export class PassThroughClient implements LlmClient {
   async condense(request: CondenseRequest): Promise<CondenseResult> {

@@ -13,6 +13,7 @@ export class ImportDialog {
   private wordCount: HTMLElement;
   private errorText: HTMLElement;
   private submitButton: HTMLButtonElement;
+  private mainButton: HTMLButtonElement;
   private fileInput: HTMLInputElement;
   private handlers: Partial<ImportHandlers> = {};
 
@@ -20,10 +21,10 @@ export class ImportDialog {
     this.root = document.createElement('div');
     this.root.className = 'import-root';
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'import-button';
-    button.textContent = 'Import PDF or Text';
+    this.mainButton = document.createElement('button');
+    this.mainButton.type = 'button';
+    this.mainButton.className = 'import-button';
+    this.mainButton.textContent = 'Import PDF or Text';
 
     this.overlay = document.createElement('div');
     this.overlay.className = 'import-overlay';
@@ -97,10 +98,10 @@ export class ImportDialog {
 
     this.panel.append(header, fileSection, textSection);
     this.overlay.append(this.panel);
-    this.root.append(button, this.overlay);
+    this.root.append(this.mainButton, this.overlay);
     container.append(this.root);
 
-    button.addEventListener('click', () => this.open());
+    this.mainButton.addEventListener('click', () => this.open());
     close.addEventListener('click', () => this.close());
     this.overlay.addEventListener('click', (event) => {
       if (event.target === this.overlay) {
@@ -181,6 +182,10 @@ export class ImportDialog {
 
   hide(): void {
     this.root.style.display = 'none';
+  }
+
+  setButtonText(text: string): void {
+    this.mainButton.textContent = text;
   }
 }
 

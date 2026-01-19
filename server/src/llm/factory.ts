@@ -1,7 +1,7 @@
-import type { LlmClient } from './types';
-import { loadLlmConfig } from './config';
-import { OpenAiClient } from './openaiClient';
-import { PassThroughClient } from './passThrough';
+import type { LlmClient } from './types.js';
+import { loadLlmConfig } from './config.js';
+import { OpenAiClient } from './openaiClient.js';
+import { PassThroughClient } from './passThrough.js';
 
 export function createLlmClient(): LlmClient {
   const config = loadLlmConfig();

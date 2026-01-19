@@ -12,6 +12,8 @@ import { ReelRail } from './ui/ReelRail';
 import { ReaderView } from './ui/ReaderView';
 import { SeekBar } from './ui/SeekBar';
 import { StyleSelector } from './ui/StyleSelector';
+import { ModeSelector } from './ui/ModeSelector';
+import { ReelsPlayer, DisplayMode } from './ui/ReelsPlayer';
 import { backgroundCatalog } from './ui/backgrounds/catalog';
 
 const SAMPLE_TEXT =
@@ -59,21 +61,106 @@ const seekBar = new SeekBar(controls.getElement());
 controls.getElement().insertBefore(seekBar.getElement(), controls.getSlidersElement());
 const styleSelector = new StyleSelector(controlsStack);
 
-let activeStyle: string = 'calming';
+const reelsPlayer = new ReelsPlayer(app);
+const modeSelector = new ModeSelector(app);
 
-const reader = new Reader({
-  frames,
-  wpm: DEFAULT_WPM,
-  onFrame: (frame) => readerView.setFrame(frame),
-  onStateChange: (state) => {
-    controls.setPlaying(state.isPlaying);
-    controls.setWpm(state.wpm);
-    seekBar.setProgress(state.currentIndex, state.totalFrames);
+modeSelector.bind((mode) => {
+  const isPortrait = mode === DisplayMode.Portrait;
+  reelsPlayer.setMode(mode);
+  document.body.classList.toggle('mode-portrait', isPortrait);
+  document.body.classList.toggle('mode-standard', !isPortrait);
+
+  if (isPortrait) {
+    // Move style selector into player so it floats inside the Reels UI
+    reelsPlayer.getContentElement().appendChild(styleSelector.getElement());
+    // Auto-play if not playing
+    if (!reader.getState().isPlaying) {
+      reader.play();
+    }
+  } else {
+    // Move style selector back to controls stack for standard view
+    controlsStack.appendChild(styleSelector.getElement());
+  }
+
+  // Move background element for clipping
+  const bgEl = document.querySelector('.bg-layer');
+  if (bgEl instanceof HTMLElement) {
+    if (isPortrait) {
+      reelsPlayer.getContentElement().insertBefore(bgEl, reelsPlayer.getContentElement().firstChild);
+    } else {
+      app.insertBefore(bgEl, app.firstChild);
+    }
   }
 });
 
-readerView.setFrame(frames[0] ?? null);
-seekBar.setProgress(0, frames.length);
+reelsPlayer.bind({
+  onPlayPause: () => reader.toggle(),
+  onStyleClick: () => styleSelector.toggle()
+});
+
+let activeStyle: string = 'calming';
+
+const reader = new Reader({
+  frames: [],
+  wpm: DEFAULT_WPM,
+  onFrame: (frame) => {
+    readerView.setFrame(frame);
+    reelsPlayer.setFrame(frame);
+  },
+  onStateChange: (state) => {
+    controls.setPlaying(state.isPlaying);
+    reelsPlayer.setPlaying(state.isPlaying);
+    controls.setWpm(state.wpm);
+    seekBar.setProgress(state.currentIndex, state.totalFrames);
+    controls.setFocusMode(state.isPlaying);
+  }
+});
+
+void runIntroSequence();
+
+async function runIntroSequence() {
+  document.body.classList.add('intro-active');
+  await background.setStyle('intro');
+
+  const introTextWrapper = document.createElement('div');
+  introTextWrapper.className = 'intro-text-wrapper';
+  const introTextEl = document.createElement('div');
+  introTextEl.className = 'intro-text';
+  introTextWrapper.append(introTextEl);
+  app!.append(introTextWrapper);
+
+  const introPhrases = [
+    'Get ready',
+    'to discover',
+    'your true',
+    'reading speed',
+    'with readfast.live'
+  ];
+
+  for (const phrase of introPhrases) {
+    introTextEl.textContent = phrase;
+    introTextEl.classList.add('intro-text--visible');
+    await new Promise(r => setTimeout(r, 800));
+    introTextEl.classList.remove('intro-text--visible');
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  introTextEl.textContent = 'readfast.live';
+  introTextEl.classList.add('intro-text--visible');
+  await new Promise(r => setTimeout(r, 1000));
+
+  introTextEl.classList.add('intro-text--vanishing');
+  await new Promise(r => setTimeout(r, 1000));
+
+  introTextWrapper.remove();
+  document.body.classList.remove('intro-active');
+  app!.classList.add('ui-entrance');
+  void background.setStyle('net');
+
+  reader.setFrames(frames, { preservePosition: false });
+  readerView.setFrame(frames[0] ?? null);
+  seekBar.setProgress(0, frames.length);
+}
 
 controls.bind({
   onPlayPause: () => reader.toggle(),
@@ -136,7 +223,8 @@ seekBar.bind({
 const reelState = {
   docId: '',
   activeReelId: '',
-  currentPage: null as ReelPage | null
+  currentPage: null as ReelPage | null,
+  documentCount: 0
 };
 
 const reelCache = new Map<number, ReelPage>();
@@ -225,17 +313,31 @@ async function loadReelPage(offset: number, align: 'start' | 'end'): Promise<voi
 }
 
 async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<void> {
+  const isFirstUpload = reelState.documentCount === 0;
+
   reelRail.setStatus('Processing document...');
   reelRail.setLoading(true);
   try {
     const { docId } = await createDoc();
-    resetReelState(docId);
+    reelState.documentCount++;
 
-    // Clear status manually for streaming
-    reelRail.setStatus('');
+    if (isFirstUpload) {
+      resetReelState(docId);
+      reelRail.setStatus('');
+    } else {
+      // For subsequent uploads, we just update the docId to the latest one
+      // but we don't clear the cache or previous reels in the UI
+      reelState.docId = docId;
+    }
+
     reelRail.show();
-    reelRail.setCooking(true); // Start cooking animation
+    reelRail.setCooking(true);
     importDialog.setMinimized(true);
+    importDialog.setButtonText('Upload another PDF or text');
+
+    // Register this upload in the selector
+    const uploadLabel = `Upload #${reelState.documentCount}`;
+    reelRail.addUpload(docId, uploadLabel);
 
     let reelsReceived = 0;
 
@@ -244,7 +346,7 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
       docId,
       (reel) => {
         reelsReceived++;
-        reelRail.appendReel(reel);
+        reelRail.appendReel(reel, docId);
 
         // Auto-select first reel
         if (!reelState.activeReelId && reel.index === 0) {
