@@ -13,7 +13,7 @@ export class ModeSelector {
         this.root.className = 'mode-selector';
 
         this.createButton(DisplayMode.Standard, '<div class="mode-icon-wide">16:9</div>', 'Standard style');
-        this.createButton(DisplayMode.Portrait, '📱', 'Reel style');
+        this.createButton(DisplayMode.Portrait, '<div class="mode-icon-tall">9:16</div>', 'Reel style');
 
         container.appendChild(this.root);
         this.updateActiveState();

@@ -11,9 +11,9 @@ import { ImportDialog } from './ui/ImportDialog';
 import { ReelRail } from './ui/ReelRail';
 import { ReaderView } from './ui/ReaderView';
 import { SeekBar } from './ui/SeekBar';
-import { StyleSelector } from './ui/StyleSelector';
-import { ModeSelector } from './ui/ModeSelector';
+import { SettingsPanel } from './ui/SettingsPanel';
 import { ReelsPlayer, DisplayMode } from './ui/ReelsPlayer';
+import { SettingsButton } from './ui/SettingsButton';
 import { backgroundCatalog } from './ui/backgrounds/catalog';
 
 const SAMPLE_TEXT =
@@ -23,6 +23,7 @@ const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) {
   throw new Error('App container not found');
 }
+document.body.classList.add('mode-standard');
 
 const background = new Background(app);
 background.start();
@@ -59,43 +60,96 @@ app.append(controlsStack);
 const controls = new Controls(controlsStack, DEFAULT_WPM, DEFAULT_CHUNK_SIZE);
 const seekBar = new SeekBar(controls.getElement());
 controls.getElement().insertBefore(seekBar.getElement(), controls.getSlidersElement());
-const styleSelector = new StyleSelector(controlsStack);
 
 const reelsPlayer = new ReelsPlayer(app);
-const modeSelector = new ModeSelector(app);
+const settingsPanel = new SettingsPanel(controlsStack, DEFAULT_WPM, DEFAULT_CHUNK_SIZE);
+const settingsButton = new SettingsButton(controlsStack);
 
-modeSelector.bind((mode) => {
-  const isPortrait = mode === DisplayMode.Portrait;
-  reelsPlayer.setMode(mode);
-  document.body.classList.toggle('mode-portrait', isPortrait);
-  document.body.classList.toggle('mode-standard', !isPortrait);
+// Bind settings button to toggle settings panel
+settingsButton.bind(() => settingsPanel.toggle());
 
-  if (isPortrait) {
-    // Move style selector into player so it floats inside the Reels UI
-    reelsPlayer.getContentElement().appendChild(styleSelector.getElement());
-    // Auto-play if not playing
-    if (!reader.getState().isPlaying) {
-      reader.play();
-    }
-  } else {
-    // Move style selector back to controls stack for standard view
-    controlsStack.appendChild(styleSelector.getElement());
-  }
+// Bind settings panel handlers
+settingsPanel.bind({
+  onModeChange: (mode: DisplayMode) => {
+    const isPortrait = mode === DisplayMode.Portrait;
+    reelsPlayer.setMode(mode);
+    document.body.classList.toggle('mode-portrait', isPortrait);
+    document.body.classList.toggle('mode-standard', !isPortrait);
 
-  // Move background element for clipping
-  const bgEl = document.querySelector('.bg-layer');
-  if (bgEl instanceof HTMLElement) {
+    // Position settings and panel
     if (isPortrait) {
-      reelsPlayer.getContentElement().insertBefore(bgEl, reelsPlayer.getContentElement().firstChild);
+      reelsPlayer.getContentElement().appendChild(settingsButton.getElement());
+      reelsPlayer.getContentElement().appendChild(settingsPanel.getElement());
     } else {
-      app.insertBefore(bgEl, app.firstChild);
+      controlsStack.appendChild(settingsButton.getElement());
+      controlsStack.appendChild(settingsPanel.getElement());
     }
+
+    if (isPortrait) {
+      // Auto-play if not playing
+      if (!reader.getState().isPlaying && reelState.activeReelId) {
+        reader.play();
+      }
+
+      // If no document or no reels yet, show empty state
+      if (!reelState.docId || !reelState.activeReelId) {
+        showEmptyReel();
+      }
+    }
+
+    // Move background element for clipping
+    const bgEl = document.querySelector('.bg-layer');
+    if (bgEl instanceof HTMLElement) {
+      if (isPortrait) {
+        reelsPlayer.getContentElement().insertBefore(bgEl, reelsPlayer.getContentElement().firstChild);
+      } else {
+        app.insertBefore(bgEl, app.firstChild);
+      }
+    }
+  },
+  onStyleChange: (style: string, specificId?: string) => {
+    activeStyle = style;
+
+    if (specificId) {
+      void background.setStyle(specificId);
+      return;
+    }
+
+    // Default behaviors when switching category only
+    if (activeStyle === 'cartoon') {
+      const cartoons = ['stickman', 'blobs', 'rain'];
+      const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
+      void background.setStyle(randomId);
+    } else if (activeStyle === 'calming') {
+      const currentReelId = reelState.activeReelId;
+      void background.setStyle('net');
+      const reel = reelState.currentPage?.reels.find(r => r.reelId === currentReelId);
+      if (reel) {
+        void background.setStyle(reel.backgroundId);
+      }
+    } else if (activeStyle === 'real') {
+      console.log('Real mode selected (placeholder)');
+    } else if (activeStyle === 'satisfying' || activeStyle === 'subway' || activeStyle === 'temple' || activeStyle === 'minecraft') {
+      // Auto-select first item if exists
+      const item = backgroundCatalog.find(b => b.category === activeStyle);
+      if (item) {
+        void background.setStyle(item.id);
+      }
+    }
+  },
+  onPlayPause: () => {
+    reader.toggle();
+  },
+  onRewind: () => reader.seek(-3),
+  onForward: () => reader.seek(3),
+  onWpmChange: (wpm) => reader.setWpm(wpm),
+  onChunkSizeChange: (size) => {
+    updateChunkSize(size);
   }
 });
 
 reelsPlayer.bind({
-  onPlayPause: () => reader.toggle(),
-  onStyleClick: () => styleSelector.toggle()
+  onPlayPause: () => reader.toggle()
 });
 
 let activeStyle: string = 'calming';
@@ -110,7 +164,10 @@ const reader = new Reader({
   onStateChange: (state) => {
     controls.setPlaying(state.isPlaying);
     reelsPlayer.setPlaying(state.isPlaying);
+    reelsPlayer.setProgress(state.currentIndex, state.totalFrames);
+    settingsPanel.setPlaying(state.isPlaying);
     controls.setWpm(state.wpm);
+    settingsPanel.setWpm(state.wpm);
     seekBar.setProgress(state.currentIndex, state.totalFrames);
     controls.setFocusMode(state.isPlaying);
   }
@@ -149,17 +206,32 @@ async function runIntroSequence() {
   introTextEl.classList.add('intro-text--visible');
   await new Promise(r => setTimeout(r, 1000));
 
-  introTextEl.classList.add('intro-text--vanishing');
-  await new Promise(r => setTimeout(r, 1000));
+  // Trigger implode animation on the text wrapper for a dramatic exit
+  introTextWrapper.classList.add('implode-active');
+  await new Promise(r => setTimeout(r, 800));
 
   introTextWrapper.remove();
   document.body.classList.remove('intro-active');
   app!.classList.add('ui-entrance');
-  void background.setStyle('net');
 
-  reader.setFrames(frames, { preservePosition: false });
-  readerView.setFrame(frames[0] ?? null);
-  seekBar.setProgress(0, frames.length);
+  // Default to Reel Mode
+  settingsPanel.setMode(DisplayMode.Portrait);
+  reelsPlayer.setMode(DisplayMode.Portrait);
+  document.body.classList.add('mode-portrait');
+  document.body.classList.remove('mode-standard');
+
+  // Move elements to correct containers for Reel Mode
+  reelsPlayer.getContentElement().appendChild(settingsButton.getElement());
+  reelsPlayer.getContentElement().appendChild(settingsPanel.getElement());
+
+  // Move background element
+  const bgEl = document.querySelector('.bg-layer');
+  if (bgEl instanceof HTMLElement) {
+    reelsPlayer.getContentElement().insertBefore(bgEl, reelsPlayer.getContentElement().firstChild);
+  }
+
+  // Show empty state since we are just starting
+  showEmptyReel();
 }
 
 controls.bind({
@@ -172,43 +244,32 @@ controls.bind({
   onForward: () => reader.seek(3),
   onWpmChange: (wpm) => reader.setWpm(wpm),
   onChunkSizeChange: (size) => {
-    currentChunkSize = size;
+    updateChunkSize(size);
+  }
+});
+
+function updateChunkSize(size: number): void {
+  currentChunkSize = size;
+
+  // Sync UI
+  controls.setChunkSize(size);
+  settingsPanel.setChunkSize(size);
+
+  const isPortrait = document.body.classList.contains('mode-portrait');
+
+  if (isPortrait && reelState.activeReelId) {
+    // Re-chunk current reel
+    const reel = reelState.currentPage?.reels.find(r => r.reelId === reelState.activeReelId);
+    if (reel) {
+      const reelFrames = groupTokens(tokenize(reel.text), size);
+      reader.setFrames(reelFrames, { preservePosition: true });
+    }
+  } else {
+    // Re-chunk active text (Standard Mode)
     const nextFrames = groupTokens(tokenize(activeText), size);
     reader.setFrames(nextFrames, { preservePosition: true });
-    controls.setChunkSize(size);
   }
-});
-
-styleSelector.bind((style, specificId) => {
-  activeStyle = style;
-
-  if (specificId) {
-    void background.setStyle(specificId);
-    return;
-  }
-
-  // Default behaviors when switching category only
-  if (activeStyle === 'cartoon') {
-    const cartoons = ['stickman', 'blobs', 'rain'];
-    const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
-    void background.setStyle(randomId);
-  } else if (activeStyle === 'calming') {
-    const currentReelId = reelState.activeReelId;
-    void background.setStyle('net');
-    const reel = reelState.currentPage?.reels.find(r => r.reelId === currentReelId);
-    if (reel) {
-      void background.setStyle(reel.backgroundId);
-    }
-  } else if (activeStyle === 'real') {
-    console.log('Real mode selected (placeholder)');
-  } else if (activeStyle === 'satisfying' || activeStyle === 'subway' || activeStyle === 'temple' || activeStyle === 'minecraft') {
-    // Auto-select first item if exists
-    const item = backgroundCatalog.find(b => b.category === activeStyle);
-    if (item) {
-      void background.setStyle(item.id);
-    }
-  }
-});
+}
 
 seekBar.bind({
   onSeek: (index) => {
@@ -223,6 +284,7 @@ seekBar.bind({
 const reelState = {
   docId: '',
   activeReelId: '',
+  currentReelIndex: -1,
   currentPage: null as ReelPage | null,
   documentCount: 0
 };
@@ -250,11 +312,90 @@ importDialog.bind({
   }
 });
 
+async function navigateToNextReel(): Promise<void> {
+  const nextIndex = reelState.currentReelIndex + 1;
+  const page = reelState.currentPage;
+
+  // If no page state, we can't navigate.
+  if (!page) return;
+
+  // Check if next reel is already in current page
+  const nextReel = page.reels.find(r => r.index === nextIndex);
+
+  // If not in current page, check if we have a next page offset
+  if (!nextReel && page.nextOffset === null) {
+    // End of list
+    return;
+  }
+
+  const performUpdate = async () => {
+    if (nextReel) {
+      selectReel(nextReel, true);
+      reelRail.setActive(nextReel.reelId);
+    } else if (page.nextOffset !== null) {
+      await loadReelPage(page.nextOffset, 'start');
+      const newPage = reelState.currentPage;
+      const firstReel = newPage?.reels.find(r => r.index === nextIndex);
+      if (firstReel) {
+        selectReel(firstReel, true);
+        reelRail.setActive(firstReel.reelId);
+      }
+    }
+  };
+
+  await reelsPlayer.playTransition('next', async () => {
+    await performUpdate();
+  });
+}
+
+async function navigateToPreviousReel(): Promise<void> {
+  const prevIndex = reelState.currentReelIndex - 1;
+  if (prevIndex < 0) return;
+
+  const page = reelState.currentPage;
+  if (!page) return;
+
+  // Check if prev reel is in current page
+  const prevReel = page.reels.find(r => r.index === prevIndex);
+
+  // If not in current page, check if we have a prev page offset
+  if (!prevReel && page.prevOffset === null) {
+    return;
+  }
+
+  const performUpdate = async () => {
+    if (prevReel) {
+      selectReel(prevReel, true);
+      reelRail.setActive(prevReel.reelId);
+    } else if (page.prevOffset !== null) {
+      await loadReelPage(page.prevOffset, 'end');
+      const newPage = reelState.currentPage;
+      const lastReel = newPage?.reels.find(r => r.index === prevIndex);
+      if (lastReel) {
+        selectReel(lastReel, true);
+        reelRail.setActive(lastReel.reelId);
+      }
+    }
+  };
+
+  await reelsPlayer.playTransition('prev', async () => {
+    await performUpdate();
+  });
+}
+
+function showEmptyReel(): void {
+  reelsPlayer.showEmptyState(true);
+  void background.setStyle('intro'); // Use localized dotWave background
+  reader.pause();
+}
+
 window.addEventListener('keydown', (event) => {
   const target = event.target as HTMLElement | null;
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
     return;
   }
+
+  const isPortraitMode = document.body.classList.contains('mode-portrait');
 
   switch (event.key) {
     case ' ':
@@ -271,16 +412,52 @@ window.addEventListener('keydown', (event) => {
       break;
     case 'ArrowUp':
       event.preventDefault();
-      reader.setWpm(reader.getState().wpm + 25);
+      if (isPortraitMode) {
+        void navigateToPreviousReel();
+      } else {
+        reader.setWpm(reader.getState().wpm + 25);
+      }
       break;
     case 'ArrowDown':
       event.preventDefault();
-      reader.setWpm(reader.getState().wpm - 25);
+      if (isPortraitMode) {
+        void navigateToNextReel();
+      } else {
+        reader.setWpm(reader.getState().wpm - 25);
+      }
       break;
     default:
       break;
   }
 });
+
+// Handle scroll/wheel events in reel mode
+let wheelTimeout: number | null = null;
+window.addEventListener('wheel', (event) => {
+  const isPortraitMode = document.body.classList.contains('mode-portrait');
+
+  if (!isPortraitMode) {
+    return; // Allow normal scrolling in standard mode
+  }
+
+  event.preventDefault();
+
+  // Debounce wheel events
+  if (wheelTimeout) {
+    return;
+  }
+
+  wheelTimeout = window.setTimeout(() => {
+    wheelTimeout = null;
+  }, 300);
+
+  // Scroll down (deltaY > 0) = next reel, scroll up (deltaY < 0) = previous reel (Instagram style)
+  if (event.deltaY > 0) {
+    void navigateToNextReel();
+  } else if (event.deltaY < 0) {
+    void navigateToPreviousReel();
+  }
+}, { passive: false });
 
 async function loadReelPage(offset: number, align: 'start' | 'end'): Promise<void> {
   if (!reelState.docId) return;
@@ -317,6 +494,13 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
 
   reelRail.setStatus('Processing document...');
   reelRail.setLoading(true);
+
+  // Show loading in Reel Mode if active
+  const isPortrait = reelsPlayer.getMode() === DisplayMode.Portrait;
+  if (isPortrait) {
+    reelsPlayer.setLoading(true, 'Processing your text...');
+  }
+
   try {
     const { docId } = await createDoc();
     reelState.documentCount++;
@@ -348,14 +532,44 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
         reelsReceived++;
         reelRail.appendReel(reel, docId);
 
+        // Update Reel Mode status
+        reelsPlayer.setLoading(false); // Hide loader once we have at least one reel or if we want to show status
+        reelsPlayer.updateStatus(reelsReceived, false);
+
+        // Ensure we have a valid page state for navigation
+        if (!reelState.currentPage) {
+          reelState.currentPage = {
+            docId: docId,
+            offset: 0,
+            limit: 100, // Arbitrary high limit for streaming page
+            totalReels: 0, // Unknown initially
+            reels: [reel],
+            nextOffset: null,
+            prevOffset: null
+          };
+        } else {
+          // Append to current page so navigation knows about it
+          if (!reelState.currentPage.reels.find(r => r.reelId === reel.reelId)) {
+            reelState.currentPage.reels.push(reel);
+          }
+        }
+
         // Auto-select first reel
         if (!reelState.activeReelId && reel.index === 0) {
-          selectReel(reel, false);
+          selectReel(reel, true);
         }
       },
       () => {
         // onDone callback
         reelRail.setCooking(false);
+
+        // Update Reel Mode status to done
+        reelsPlayer.updateStatus(reelsReceived, true);
+        reelsPlayer.setLoading(false);
+
+        if (reelsReceived === 0) {
+          reelRail.setStatus('No reels were generated.');
+        }
         if (reelsReceived === 0) {
           reelRail.setStatus('No reels were generated.');
         }
@@ -406,6 +620,10 @@ function prefetchPage(offset: number | null): void {
 }
 
 function selectReel(reel: Reel, autoplay: boolean): void {
+  reelState.activeReelId = reel.reelId;
+  reelState.currentReelIndex = reel.index;
+  reelsPlayer.showEmptyState(false);
+
   // Apply background based on style
   if (activeStyle === 'cartoon') {
     // Pick a random cartoon background
@@ -420,7 +638,19 @@ function selectReel(reel: Reel, autoplay: boolean): void {
 
   const reelFrames = groupTokens(tokenize(reel.text), currentChunkSize);
   reader.setFrames(reelFrames, { preservePosition: false });
+
   if (autoplay) {
+    // restart from beginning explicitly to be sure
+    reader.seek(-reader.getState().currentIndex);
+
+    // Explicitly reset progress UI immediately to 0
+    // This prevents the "old" progress from lingering during the transition
+    reelsPlayer.setProgress(0, reelFrames.length);
+
     reader.play();
+  } else {
+    // Even if not autoplaying, we are at the start
+    reader.seek(-reader.getState().currentIndex);
+    reelsPlayer.setProgress(0, reelFrames.length);
   }
 }

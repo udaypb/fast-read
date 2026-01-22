@@ -98,7 +98,11 @@ export class ImportDialog {
 
     this.panel.append(header, fileSection, textSection);
     this.overlay.append(this.panel);
-    this.root.append(this.mainButton, this.overlay);
+
+    // Append overlay to body to ensure it breaks out of any parent transforms
+    document.body.appendChild(this.overlay);
+
+    this.root.append(this.mainButton);
     container.append(this.root);
 
     this.mainButton.addEventListener('click', () => this.open());

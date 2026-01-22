@@ -143,6 +143,7 @@ export class Reader {
 
       this.state.currentIndex += 1;
       this.emitFrame();
+      this.notifyState();
       const nextFrame = this.frames[this.state.currentIndex];
       if (!nextFrame) {
         this.pause();
