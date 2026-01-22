@@ -31,6 +31,7 @@ background.start();
 const DEFAULT_WPM = 300;
 const DEFAULT_CHUNK_SIZE = 3;
 const REEL_PAGE_LIMIT = 5;
+const REEL_TRANSITION_PAUSE_MS = 1000;
 
 let activeText = SAMPLE_TEXT;
 let currentChunkSize = DEFAULT_CHUNK_SIZE;
@@ -71,6 +72,7 @@ settingsButton.bind(() => settingsPanel.toggle());
 // Bind settings panel handlers
 settingsPanel.bind({
   onModeChange: (mode: DisplayMode) => {
+    clearReelAutoplayTimeout();
     const isPortrait = mode === DisplayMode.Portrait;
     reelsPlayer.setMode(mode);
     document.body.classList.toggle('mode-portrait', isPortrait);
@@ -291,6 +293,7 @@ const reelState = {
 
 const reelCache = new Map<number, ReelPage>();
 const reelRequests = new Map<number, Promise<ReelPage>>();
+let reelAutoplayTimeout: number | null = null;
 
 reelRail.bind({
   onSelect: (reel) => selectReel(reel, true),
@@ -328,24 +331,33 @@ async function navigateToNextReel(): Promise<void> {
     return;
   }
 
+  reader.pause();
   const performUpdate = async () => {
     if (nextReel) {
-      selectReel(nextReel, true);
+      selectReel(nextReel, false);
       reelRail.setActive(nextReel.reelId);
+      return nextReel.reelId;
     } else if (page.nextOffset !== null) {
       await loadReelPage(page.nextOffset, 'start');
       const newPage = reelState.currentPage;
       const firstReel = newPage?.reels.find(r => r.index === nextIndex);
       if (firstReel) {
-        selectReel(firstReel, true);
+        selectReel(firstReel, false);
         reelRail.setActive(firstReel.reelId);
+        return firstReel.reelId;
       }
     }
+    return null;
   };
 
+  let selectedReelId: string | null = null;
   await reelsPlayer.playTransition('next', async () => {
-    await performUpdate();
+    selectedReelId = await performUpdate();
   });
+
+  if (selectedReelId) {
+    scheduleReelAutoplay(selectedReelId);
+  }
 }
 
 async function navigateToPreviousReel(): Promise<void> {
@@ -363,24 +375,33 @@ async function navigateToPreviousReel(): Promise<void> {
     return;
   }
 
+  reader.pause();
   const performUpdate = async () => {
     if (prevReel) {
-      selectReel(prevReel, true);
+      selectReel(prevReel, false);
       reelRail.setActive(prevReel.reelId);
+      return prevReel.reelId;
     } else if (page.prevOffset !== null) {
       await loadReelPage(page.prevOffset, 'end');
       const newPage = reelState.currentPage;
       const lastReel = newPage?.reels.find(r => r.index === prevIndex);
       if (lastReel) {
-        selectReel(lastReel, true);
+        selectReel(lastReel, false);
         reelRail.setActive(lastReel.reelId);
+        return lastReel.reelId;
       }
     }
+    return null;
   };
 
+  let selectedReelId: string | null = null;
   await reelsPlayer.playTransition('prev', async () => {
-    await performUpdate();
+    selectedReelId = await performUpdate();
   });
+
+  if (selectedReelId) {
+    scheduleReelAutoplay(selectedReelId);
+  }
 }
 
 function showEmptyReel(): void {
@@ -619,7 +640,30 @@ function prefetchPage(offset: number | null): void {
   void requestReelPage(offset);
 }
 
+function clearReelAutoplayTimeout(): void {
+  if (reelAutoplayTimeout !== null) {
+    window.clearTimeout(reelAutoplayTimeout);
+    reelAutoplayTimeout = null;
+  }
+}
+
+function scheduleReelAutoplay(reelId: string): void {
+  clearReelAutoplayTimeout();
+  if (reelsPlayer.getMode() !== DisplayMode.Portrait) {
+    reader.play();
+    return;
+  }
+
+  reelAutoplayTimeout = window.setTimeout(() => {
+    reelAutoplayTimeout = null;
+    if (reelState.activeReelId !== reelId) return;
+    if (reelsPlayer.getMode() !== DisplayMode.Portrait) return;
+    reader.play();
+  }, REEL_TRANSITION_PAUSE_MS);
+}
+
 function selectReel(reel: Reel, autoplay: boolean): void {
+  clearReelAutoplayTimeout();
   reelState.activeReelId = reel.reelId;
   reelState.currentReelIndex = reel.index;
   reelsPlayer.showEmptyState(false);
