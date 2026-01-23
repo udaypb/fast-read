@@ -50,6 +50,11 @@ export class SettingsPanel {
         // Add drag gestures
         this.initDragGestures();
 
+        // Drag Handle for mobile sheet
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'settings-drag-handle';
+        this.root.appendChild(dragHandle);
+
         this.contentWrapper = document.createElement('div');
         this.contentWrapper.className = 'settings-panel-content';
 
@@ -343,51 +348,66 @@ export class SettingsPanel {
         let isAtTop = true;
 
         const onPointerDown = (e: PointerEvent) => {
-            // Only allow dragging from header/top area or if content is scrolled to top
-            if (!this.isOpen) return;
+            // Only allow dragging in portrait mode (bottom sheet)
+            if (!this.isOpen || this.activeMode !== DisplayMode.Portrait) return;
+
+            // Check if clicking on handle or if content is at top
+            const target = e.target as HTMLElement;
+            const isHandle = target.classList.contains('settings-drag-handle');
+
+            // If clicking on a button, input, or interactive link, don't drag
+            if (!isHandle && (
+                target.tagName === 'BUTTON' ||
+                target.tagName === 'INPUT' ||
+                target.closest('.settings-preview-item') ||
+                target.closest('.settings-style-tab')
+            )) return;
+
             const content = this.contentWrapper;
             isAtTop = content.scrollTop <= 0;
 
-            // If we are scrolling content, don't start drag immediately unless at very top
-            if (!isAtTop) return;
+            // Drag from handle or drag down from top of content
+            if (!isHandle && !isAtTop) return;
 
             isDragging = true;
             startY = e.clientY;
             currentY = 0;
 
             this.root.setPointerCapture(e.pointerId);
-            this.root.style.transition = 'none'; // Disable transition for direct 1:1 movement
+            this.root.style.transition = 'none';
         };
 
         const onPointerMove = (e: PointerEvent) => {
             if (!isDragging) return;
 
             const deltaY = e.clientY - startY;
-
-            // Only allow dragging DOWN
             if (deltaY < 0) {
-                // If user tries dragging up, reject it (allow scroll instead if we weren't capturing)
-                return;
+                // Dragging up? If we are at top, maybe small rubber band? 
+                // For now, just allow moving down.
+                currentY = deltaY * 0.2; // Small resistance
+            } else {
+                currentY = deltaY;
             }
 
-            currentY = deltaY;
-            // Add resistance? No, direct following feels better for "sheet"
             this.root.style.transform = `translateY(${currentY}px)`;
+
+            // If dragging significantly, fade it?
+            const opacity = Math.max(0.5, 1 - (deltaY / 500));
+            this.root.style.opacity = String(opacity);
         };
 
         const onPointerUp = (e: PointerEvent) => {
             if (!isDragging) return;
             isDragging = false;
             this.root.releasePointerCapture(e.pointerId);
-            this.root.style.transition = ''; // Re-enable CSS transition
+            this.root.style.transition = '';
+            this.root.style.opacity = '';
 
-            // Threshold to close
-            if (currentY > 100) {
-                // Close
+            // Threshold to close: 100px or fast flick?
+            if (currentY > 120) {
                 this.isOpen = false;
                 this.updatePanelState();
             } else {
-                // Snap back
                 this.root.style.transform = '';
             }
         };

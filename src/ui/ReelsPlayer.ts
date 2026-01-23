@@ -1,5 +1,7 @@
 import { gsap } from 'gsap';
 import type { Frame } from '../reader/types';
+import type { Reel } from '../api/types';
+import { Background } from './Background';
 
 export enum DisplayMode {
     Standard = 'standard',
@@ -9,10 +11,10 @@ export enum DisplayMode {
 export class ReelsPlayer {
     private root: HTMLElement;
     private contentEl: HTMLElement;
-    private textEl: HTMLElement;
     private playPauseBtn: HTMLButtonElement;
     private mode: DisplayMode = DisplayMode.Standard;
     private onPlayPause?: () => void;
+    private onSeek?: (delta: number) => void;
     private isEmptyState = false;
 
     private loaderEl: HTMLElement;
@@ -24,6 +26,16 @@ export class ReelsPlayer {
     private progressContainer: HTMLElement;
     private progressBar: HTMLElement;
     private frameCounter: HTMLElement;
+    private playPauseIndicator: HTMLElement;
+
+    private pager: HTMLElement;
+    private screens: Map<string, ReelScreen> = new Map();
+    private activeReelId: string | null = null;
+    private observer: IntersectionObserver;
+    private onActiveReelChange?: (reelId: string) => void;
+    private manualBackgroundId: string | null = null;
+    private isInternalScroll = false;
+    private _isDragging = false;
 
     constructor(container: HTMLElement) {
         this.root = document.createElement('div');
@@ -33,25 +45,16 @@ export class ReelsPlayer {
         this.contentEl = document.createElement('div');
         this.contentEl.className = 'reels-player-content';
 
-        this.textEl = document.createElement('div');
-        this.textEl.className = 'reels-player-text';
+        // this.textEl = document.createElement('div'); // Removed from ReelsPlayer
+        // this.textEl.className = 'reels-player-text';
+        // textEl is now part of ReelScreen, removed from ReelsPlayer directly
+        // this.textEl = document.createElement('div');
+        // this.textEl.className = 'reels-player-text';
 
         this.playPauseBtn = document.createElement('button');
         this.playPauseBtn.className = 'reels-play-pause-btn';
         this.playPauseBtn.innerHTML = '<span>⏸</span>';
         this.playPauseBtn.style.display = 'none'; // Hidden in favor of Settings Panel controls
-
-        // Progress Bar (Bottom)
-        this.progressContainer = document.createElement('div');
-        this.progressContainer.className = 'reels-progress-container';
-        this.progressBar = document.createElement('div');
-        this.progressBar.className = 'reels-progress-bar';
-        this.progressContainer.appendChild(this.progressBar);
-
-        // Frame Counter (Bottom Left)
-        this.frameCounter = document.createElement('div');
-        this.frameCounter.className = 'reels-frame-counter';
-        this.frameCounter.textContent = '0 / 0';
 
         // Loader
         this.loaderEl = document.createElement('div');
@@ -75,12 +78,59 @@ export class ReelsPlayer {
         this.statusEl.appendChild(this.statusDot);
         this.statusEl.appendChild(this.statusText);
 
-        this.contentEl.appendChild(this.textEl);
-        this.contentEl.appendChild(this.playPauseBtn);
+        // Append loader and status bar directly to contentEl
         this.contentEl.appendChild(this.loaderEl);
         this.contentEl.appendChild(this.statusEl);
-        this.contentEl.appendChild(this.progressContainer);
-        this.contentEl.appendChild(this.frameCounter);
+
+        // Pager container for vertical scrolling
+        this.pager = document.createElement('div');
+        this.pager.className = 'reels-pager';
+        this.contentEl.appendChild(this.pager);
+
+        // Global Overlays (stay fixed while pager scrolls)
+        this.progressContainer = document.createElement('div');
+        this.progressContainer.className = 'reels-progress-container';
+        this.progressBar = document.createElement('div');
+        this.progressBar.className = 'reels-progress-bar';
+        this.progressContainer.appendChild(this.progressBar);
+
+        this.frameCounter = document.createElement('div');
+        this.frameCounter.className = 'reels-frame-counter';
+        this.frameCounter.textContent = '0 / 0';
+
+        this.playPauseIndicator = document.createElement('div');
+        this.playPauseIndicator.className = 'reels-center-indicator';
+
+        this.contentEl.append(
+            this.progressContainer,
+            this.frameCounter,
+            this.playPauseIndicator
+        );
+
+        this.initInteraction(this.pager);
+
+        this.observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const id = (entry.target as HTMLElement).dataset.reelId;
+                if (!id) return;
+                const screen = this.screens.get(id);
+                if (!screen) return;
+
+                if (entry.isIntersecting) {
+                    // Pre-warm background as soon as it enters
+                    screen.activate(this.manualBackgroundId);
+                } else {
+                    // Cleanup when definitely gone
+                    screen.deactivate();
+                }
+
+                if (entry.intersectionRatio > 0.5 && id !== this.activeReelId && !this.isInternalScroll && !this._isDragging) {
+                    this.activeReelId = id;
+                    this.onActiveReelChange?.(id);
+                }
+            });
+        }, { threshold: [0, 0.5] });
+
         this.root.appendChild(this.contentEl);
         container.appendChild(this.root);
     }
@@ -120,41 +170,94 @@ export class ReelsPlayer {
     // ... (keep existing methods up to playTransition)
     showEmptyState(show: boolean): void {
         this.isEmptyState = show;
+
+        if (show && this.screens.size === 0) {
+            // Create a temporary empty screen so we can show the "No reels" message and background
+            const emptyReel = {
+                reelId: 'empty',
+                title: 'Empty',
+                text: 'No reels to show',
+                index: 0,
+                wordCount: 0,
+                estDurationSec: 0,
+                backgroundId: 'intro'
+            } as any;
+            this.addReel(emptyReel);
+            this.activeReelId = 'empty';
+            const screen = this.screens.get('empty');
+            if (screen) {
+                screen.activate('intro');
+                screen.setTextContent('No reels to show');
+                screen.addTextClass('reels-player-text--empty');
+            }
+            return;
+        }
+
+        const activeScreen = this.activeReelId ? this.screens.get(this.activeReelId) : null;
+
         if (show) {
-            this.textEl.textContent = 'No reels to display';
-            this.textEl.classList.add('reels-player-text--empty');
+            if (activeScreen) {
+                activeScreen.setTextContent('No reels to show');
+                activeScreen.addTextClass('reels-player-text--empty');
+            }
             this.playPauseBtn.style.display = 'none';
         } else {
-            this.textEl.classList.remove('reels-player-text--empty');
+            if (activeScreen) {
+                activeScreen.removeTextClass('reels-player-text--empty');
+                // The actual text will be set by setFrame
+            }
             this.playPauseBtn.style.display = 'flex';
         }
     }
 
-    setFrame(frame: Frame | null): void {
-        if (this.isEmptyState) return;
-        if (!frame) {
-            this.textEl.textContent = '';
-            return;
+    public setManualBackground(id: string | null): void {
+        this.manualBackgroundId = id;
+        const active = this.activeReelId ? this.screens.get(this.activeReelId) : null;
+        if (active) {
+            active.activate(this.manualBackgroundId);
         }
+    }
 
-        this.textEl.textContent = frame.text;
+    setFrame(frame: Frame | null): void {
+        const activeScreen = this.activeReelId ? this.screens.get(this.activeReelId) : null;
+        if (activeScreen) {
+            activeScreen.setFrame(frame);
+        }
+    }
 
-        // Update progress for the current reel
-        // Frame objects don't carry their total count directly, so we infer or need meaningful data.
-        // But reader passes meaningful index/total in onStateChange, which main.ts calls.
-        // However, here we receive a Frame object. Let's assume we rely on onStateChange for progress.
-        // Wait, the user asked for "progress of reel".
-        // main.ts calls reelsPlayer.setFrame(frame).
-        // main.ts also calls reelsPlayer.setPlaying(state.isPlaying) in onStateChange.
-        // We should add setProgress to onStateChange in main.ts instead.
+    public addReel(reel: Reel): void {
+        if (this.screens.has(reel.reelId)) return;
 
-        this.textEl.animate(
-            [
-                { opacity: 0.6, transform: 'scale(0.95)' },
-                { opacity: 1, transform: 'scale(1)' }
-            ],
-            { duration: 100, easing: 'ease-out' }
-        );
+        const screen = new ReelScreen(reel);
+        this.screens.set(reel.reelId, screen);
+        this.pager.appendChild(screen.getElement());
+        this.observer.observe(screen.getElement());
+
+        if (!this.activeReelId) {
+            this.activeReelId = reel.reelId;
+            screen.activate(this.manualBackgroundId);
+        }
+    }
+
+    public scrollToReel(reelId: string): void {
+        const screen = this.screens.get(reelId);
+        if (screen) {
+            this.isInternalScroll = true;
+            this.activeReelId = reelId;
+            screen.getElement().scrollIntoView({ behavior: 'smooth' });
+            // Let the observer handle activation/deactivation naturally as it scrolls
+            setTimeout(() => { this.isInternalScroll = false; }, 800);
+        }
+    }
+
+    public clearReels(): void {
+        this.screens.forEach(s => {
+            this.observer.unobserve(s.getElement());
+            s.deactivate();
+        });
+        this.pager.innerHTML = '';
+        this.screens.clear();
+        this.activeReelId = null;
     }
 
     setMode(mode: DisplayMode): void {
@@ -180,85 +283,221 @@ export class ReelsPlayer {
         this.playPauseBtn.innerHTML = playing ? '<span>⏸</span>' : '<span>▶</span>';
     }
 
-    bind(handler: { onPlayPause: () => void }): void {
+    public showPlayPauseIndicator(playing: boolean): void {
+        this.playPauseIndicator.innerHTML = playing ? '<span>▶</span>' : '<span>⏸</span>';
+
+        // Use class trigger for animation
+        this.playPauseIndicator.classList.remove('animate');
+        // trigger reflow
+        void this.playPauseIndicator.offsetWidth;
+        this.playPauseIndicator.classList.add('animate');
+    }
+
+    private initInteraction(el: HTMLElement): void {
+        let holdTimer: number | null = null;
+        let holdInterval: number | null = null;
+        let holdConfig = { delay: 400, initialInterval: 150, minInterval: 50 };
+
+        let startY = 0;
+        let startScrollTop = 0;
+        let isDragging = false;
+        let hasMovedSignificantValue = false;
+        const dragThreshold = 5; // Low threshold for immediate response
+
+        const startHold = (delta: number) => {
+            if (hasMovedSignificantValue) return;
+            let currentInterval = holdConfig.initialInterval;
+
+            holdInterval = window.setInterval(() => {
+                this.onSeek?.(delta);
+                // Accelerate
+                if (currentInterval > holdConfig.minInterval) {
+                    currentInterval -= 10;
+                    if (holdInterval !== null) {
+                        window.clearInterval(holdInterval);
+                        holdInterval = window.setInterval(() => {
+                            this.onSeek?.(delta);
+                        }, currentInterval);
+                    }
+                }
+            }, currentInterval);
+        };
+
+        el.addEventListener('pointerdown', (e) => {
+            if (this.isEmptyState) return;
+
+            startY = e.clientY;
+            startScrollTop = this.pager.scrollTop;
+            this._isDragging = true;
+            isDragging = true;
+            hasMovedSignificantValue = false;
+
+            el.setPointerCapture(e.pointerId);
+
+            // Disable snap while dragging to prevent fight (on desktop/mouse)
+            if (e.pointerType === 'mouse') {
+                this.pager.style.scrollSnapType = 'none';
+            }
+
+            const rect = el.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const isLeft = x < rect.width * 0.4;
+            const isRight = x > rect.width * 0.6;
+
+            if (isLeft || isRight) {
+                const delta = isLeft ? -1 : 1;
+                holdTimer = window.setTimeout(() => {
+                    if (!hasMovedSignificantValue && isDragging) {
+                        startHold(delta);
+                    }
+                }, holdConfig.delay);
+            }
+        });
+
+        el.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+
+            const deltaY = e.clientY - startY;
+
+            if (Math.abs(deltaY) > dragThreshold) {
+                hasMovedSignificantValue = true;
+                if (holdTimer) {
+                    window.clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+            }
+
+            if (hasMovedSignificantValue) {
+                // Execute immediately for responsiveness
+                this.pager.scrollTop = startScrollTop - deltaY;
+            }
+        });
+
+        const stopHold = (e: PointerEvent) => {
+            if (!isDragging) return;
+            isDragging = false;
+            this._isDragging = false;
+
+            // Restore snap
+            this.pager.style.scrollSnapType = 'y mandatory';
+
+            try {
+                el.releasePointerCapture(e.pointerId);
+            } catch (err) { }
+
+            if (holdTimer !== null) {
+                window.clearTimeout(holdTimer);
+                holdTimer = null;
+            }
+            if (holdInterval !== null) {
+                window.clearInterval(holdInterval);
+                holdInterval = null;
+            }
+
+            if (!hasMovedSignificantValue) {
+                // It was a tap
+                const rect = el.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const isLeft = x < rect.width * 0.4;
+                const isRight = x > rect.width * 0.6;
+
+                if (!isLeft && !isRight) {
+                    this.onPlayPause?.();
+                } else {
+                    const delta = isLeft ? -1 : 1;
+                    this.onSeek?.(delta);
+                }
+            }
+        };
+
+        el.addEventListener('pointerup', stopHold);
+        el.addEventListener('pointercancel', stopHold);
+        el.addEventListener('pointerleave', stopHold);
+    }
+
+    bind(handler: {
+        onPlayPause?: () => void;
+        onSeek?: (delta: number) => void;
+        onActiveReelChange?: (reelId: string) => void;
+    }): void {
         this.onPlayPause = handler.onPlayPause;
+        this.onSeek = handler.onSeek;
+        this.onActiveReelChange = handler.onActiveReelChange;
     }
 
     async playTransition(direction: 'next' | 'prev', updateState: () => void | Promise<void>): Promise<void> {
-        // Clone current content
-        const outgoing = document.createElement('div');
-        outgoing.className = 'transition-container-outgoing';
-        outgoing.appendChild(this.textEl.cloneNode(true));
-        outgoing.appendChild(this.playPauseBtn.cloneNode(true));
-        outgoing.appendChild(this.progressContainer.cloneNode(true));
-        outgoing.appendChild(this.frameCounter.cloneNode(true));
-        this.contentEl.appendChild(outgoing);
-
-        // Hide real elements
-        this.textEl.style.opacity = '0';
-        this.playPauseBtn.style.opacity = '0';
-        this.progressContainer.style.opacity = '0';
-        this.frameCounter.style.opacity = '0';
-
-        // Update state
+        // No longer used, handled by native scroll
         await updateState();
+    }
+}
 
-        // New content container
-        const incoming = document.createElement('div');
-        incoming.className = 'transition-container-incoming';
+class ReelScreen {
+    private root: HTMLElement;
+    private textEl: HTMLElement;
+    private backgroundContainer: HTMLElement;
+    private background: Background;
+    private reel: Reel;
 
-        // We need to reflect the NEW state in the incoming container
-        // Clone the elements which have effectively just been updated by updateState()
-        // Note: The main elements (this.textEl, etc) have ALREADY been updated via updateState() await
+    constructor(reel: Reel) {
+        this.reel = reel;
+        this.root = document.createElement('div');
+        this.root.className = 'reel-screen';
+        this.root.dataset.reelId = reel.reelId;
 
-        const textClone = this.textEl.cloneNode(true) as HTMLElement;
-        const playBtnClone = this.playPauseBtn.cloneNode(true) as HTMLElement;
-        const progressClone = this.progressContainer.cloneNode(true) as HTMLElement;
-        const counterClone = this.frameCounter.cloneNode(true) as HTMLElement;
+        this.backgroundContainer = document.createElement('div');
+        this.backgroundContainer.className = 'reel-screen-background';
 
-        // Ensure the progress clone reflects the reset state (0%) if it was just reset
-        // The original elements are updated, so the clone should be correct,
-        // but let's double check styles transfer correctly.
+        this.background = new Background(this.backgroundContainer);
 
-        incoming.appendChild(textClone);
-        incoming.appendChild(playBtnClone);
-        incoming.appendChild(progressClone);
-        incoming.appendChild(counterClone);
-        this.contentEl.appendChild(incoming);
+        this.textEl = document.createElement('div');
+        this.textEl.className = 'reels-player-text';
+        this.textEl.textContent = ''; // Will be updated by reader
 
-        const yOffset = '100%';
-        const duration = 0.5;
-        const ease = 'power2.inOut';
+        this.root.append(this.backgroundContainer, this.textEl);
+    }
 
-        return new Promise<void>((resolve) => {
-            if (direction === 'next') {
-                // Determine direction: Next reel comes from bottom (positive Y)
-                gsap.fromTo(outgoing,
-                    { y: '0%', opacity: 1 },
-                    { y: '-100%', opacity: 0.5, duration, ease }
-                );
-                gsap.fromTo(incoming,
-                    { y: '100%', opacity: 0.5 },
-                    { y: '0%', opacity: 1, duration, ease, onComplete: () => resolve() }
-                );
-            } else {
-                // Prev reel comes from top (negative Y)
-                gsap.fromTo(outgoing,
-                    { y: '0%', opacity: 1 },
-                    { y: '100%', opacity: 0.5, duration, ease }
-                );
-                gsap.fromTo(incoming,
-                    { y: '-100%', opacity: 0.5 },
-                    { y: '0%', opacity: 1, duration, ease, onComplete: () => resolve() }
-                );
-            }
-        }).then(() => {
-            outgoing.remove();
-            incoming.remove();
-            this.textEl.style.opacity = '';
-            this.playPauseBtn.style.opacity = '';
-            this.progressContainer.style.opacity = '';
-            this.frameCounter.style.opacity = '';
-        });
+    getElement(): HTMLElement {
+        return this.root;
+    }
+
+    getBackgroundContainer(): HTMLElement {
+        return this.backgroundContainer;
+    }
+
+    activate(manualStyleId: string | null): void {
+        const styleId = (this.reel.reelId === 'empty') ? 'intro' : (manualStyleId || this.reel.backgroundId || 'net');
+        this.background.start(styleId);
+    }
+
+    deactivate(): void {
+        this.background.stop();
+    }
+
+    setFrame(frame: Frame | null): void {
+        if (!frame) {
+            this.textEl.textContent = '';
+            return;
+        }
+        this.textEl.textContent = frame.text;
+
+        this.textEl.animate(
+            [
+                { opacity: 0.6, transform: 'scale(0.95)' },
+                { opacity: 1, transform: 'scale(1)' }
+            ],
+            { duration: 100, easing: 'ease-out' }
+        );
+    }
+
+    setTextContent(text: string): void {
+        this.textEl.textContent = text;
+    }
+
+    addTextClass(className: string): void {
+        this.textEl.classList.add(className);
+    }
+
+    removeTextClass(className: string): void {
+        this.textEl.classList.remove(className);
     }
 }

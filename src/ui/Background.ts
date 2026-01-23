@@ -55,16 +55,20 @@ export class Background {
 
     if (token !== this.loadToken) return;
 
-    if (token !== this.loadToken) return;
+    // Cleanup previous effect safely
+    if (previousEffect) {
+      try {
+        previousEffect.destroy();
+      } catch (e) {
+        console.warn('Failed to destroy previous background effect:', e);
+      }
+    }
+    this.effect = null;
+    this.root.innerHTML = '';
+    this.root.style.background = 'black'; // Reset
 
     // Handle Video types
     if (definition.type === BackgroundType.Video) {
-      previousEffect?.destroy();
-      this.effect = null;
-
-      this.root.innerHTML = '';
-      this.root.style.background = 'black'; // Reset
-
       if (definition.url) {
         const video = document.createElement('video');
         video.src = definition.url;
@@ -78,7 +82,7 @@ export class Background {
         video.style.width = '100%';
         video.style.height = '100%';
         video.style.objectFit = 'cover';
-        video.style.zIndex = '-1';
+        video.style.zIndex = '0';
         this.root.appendChild(video);
 
         this.effect = {
@@ -94,11 +98,6 @@ export class Background {
     try {
       if (!factory) throw new Error('Factory not loaded');
 
-      // Clear previous non-canvas content if any
-      if (previousId && (getBackgroundDefinition(previousId)?.type === BackgroundType.Video)) {
-        this.root.innerHTML = '';
-      }
-
       const nextEffect = factory({
         el: this.root,
         THREE,
@@ -109,22 +108,27 @@ export class Background {
         backgroundColor: 0x000000,
         ...(definition.options ?? {})
       });
-      previousEffect?.destroy();
       this.effect = nextEffect;
     } catch (error) {
       console.warn('Failed to initialize background effect.', error);
       this.disabled.add(definition.id);
-      this.effect = previousEffect;
+      this.effect = null;
       this.currentId = previousId;
-      if (!this.effect && definition.id !== 'net') {
+      if (definition.id !== 'net') {
         await this.setStyle('net');
       }
     }
   }
 
   stop(): void {
-    this.effect?.destroy();
-    this.effect = null;
+    if (this.effect) {
+      try {
+        this.effect.destroy();
+      } catch (e) {
+        console.warn('Failed to destroy background effect:', e);
+      }
+      this.effect = null;
+    }
   }
 
   private resolveDefinition(styleId: string): BackgroundDefinition | undefined {

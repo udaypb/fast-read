@@ -113,9 +113,15 @@ settingsPanel.bind({
     activeStyle = style;
 
     if (specificId) {
+      manualBackgroundId = specificId;
       void background.setStyle(specificId);
+      reelsPlayer.setManualBackground(specificId);
       return;
     }
+
+    // Changing category clears specific selection
+    manualBackgroundId = null;
+    reelsPlayer.setManualBackground(null);
 
     // Default behaviors when switching category only
     if (activeStyle === 'cartoon') {
@@ -141,6 +147,9 @@ settingsPanel.bind({
   },
   onPlayPause: () => {
     reader.toggle();
+    if (document.body.classList.contains('mode-portrait')) {
+      reelsPlayer.showPlayPauseIndicator(reader.getState().isPlaying);
+    }
   },
   onRewind: () => reader.seek(-3),
   onForward: () => reader.seek(3),
@@ -151,10 +160,22 @@ settingsPanel.bind({
 });
 
 reelsPlayer.bind({
-  onPlayPause: () => reader.toggle()
+  onPlayPause: () => {
+    reader.toggle();
+    reelsPlayer.showPlayPauseIndicator(reader.getState().isPlaying);
+  },
+  onSeek: (delta) => reader.seek(delta),
+  onActiveReelChange: (reelId: string) => {
+    // When the user scrolls manually, sync the rest of the app
+    const reel = reelState.currentPage?.reels.find(r => r.reelId === reelId);
+    if (reel) {
+      selectReel(reel, true, false); // autoplay true, scroll false
+    }
+  }
 });
 
 let activeStyle: string = 'calming';
+let manualBackgroundId: string | null = null;
 
 const reader = new Reader({
   frames: [],
@@ -285,7 +306,7 @@ seekBar.bind({
 
 const reelState = {
   docId: '',
-  activeReelId: '',
+  activeReelId: null as string | null,
   currentReelIndex: -1,
   currentPage: null as ReelPage | null,
   documentCount: 0
@@ -331,32 +352,19 @@ async function navigateToNextReel(): Promise<void> {
     return;
   }
 
-  reader.pause();
-  const performUpdate = async () => {
-    if (nextReel) {
-      selectReel(nextReel, false);
-      reelRail.setActive(nextReel.reelId);
-      return nextReel.reelId;
-    } else if (page.nextOffset !== null) {
-      await loadReelPage(page.nextOffset, 'start');
-      const newPage = reelState.currentPage;
-      const firstReel = newPage?.reels.find(r => r.index === nextIndex);
-      if (firstReel) {
-        selectReel(firstReel, false);
-        reelRail.setActive(firstReel.reelId);
-        return firstReel.reelId;
-      }
+  if (nextReel) {
+    selectReel(nextReel, true);
+    reelRail.setActive(nextReel.reelId);
+    scheduleReelAutoplay(nextReel.reelId);
+  } else if (page.nextOffset !== null) {
+    await loadReelPage(page.nextOffset, 'start');
+    const newPage = reelState.currentPage;
+    const firstReel = newPage?.reels.find(r => r.index === nextIndex);
+    if (firstReel) {
+      selectReel(firstReel, true);
+      reelRail.setActive(firstReel.reelId);
+      scheduleReelAutoplay(firstReel.reelId);
     }
-    return null;
-  };
-
-  let selectedReelId: string | null = null;
-  await reelsPlayer.playTransition('next', async () => {
-    selectedReelId = await performUpdate();
-  });
-
-  if (selectedReelId) {
-    scheduleReelAutoplay(selectedReelId);
   }
 }
 
@@ -375,38 +383,25 @@ async function navigateToPreviousReel(): Promise<void> {
     return;
   }
 
-  reader.pause();
-  const performUpdate = async () => {
-    if (prevReel) {
-      selectReel(prevReel, false);
-      reelRail.setActive(prevReel.reelId);
-      return prevReel.reelId;
-    } else if (page.prevOffset !== null) {
-      await loadReelPage(page.prevOffset, 'end');
-      const newPage = reelState.currentPage;
-      const lastReel = newPage?.reels.find(r => r.index === prevIndex);
-      if (lastReel) {
-        selectReel(lastReel, false);
-        reelRail.setActive(lastReel.reelId);
-        return lastReel.reelId;
-      }
+  if (prevReel) {
+    selectReel(prevReel, true);
+    reelRail.setActive(prevReel.reelId);
+    scheduleReelAutoplay(prevReel.reelId);
+  } else if (page.prevOffset !== null) {
+    await loadReelPage(page.prevOffset, 'end');
+    const newPage = reelState.currentPage;
+    const lastReel = newPage?.reels[newPage.reels.length - 1];
+    if (lastReel) {
+      selectReel(lastReel, true);
+      reelRail.setActive(lastReel.reelId);
+      scheduleReelAutoplay(lastReel.reelId);
     }
-    return null;
-  };
-
-  let selectedReelId: string | null = null;
-  await reelsPlayer.playTransition('prev', async () => {
-    selectedReelId = await performUpdate();
-  });
-
-  if (selectedReelId) {
-    scheduleReelAutoplay(selectedReelId);
   }
 }
 
 function showEmptyReel(): void {
   reelsPlayer.showEmptyState(true);
-  void background.setStyle('intro'); // Use localized dotWave background
+  void background.setStyle('intro');
   reader.pause();
 }
 
@@ -431,15 +426,8 @@ window.addEventListener('keydown', (event) => {
       event.preventDefault();
       reader.seek(1);
       break;
-    case 'ArrowUp':
-      event.preventDefault();
-      if (isPortraitMode) {
-        void navigateToPreviousReel();
-      } else {
-        reader.setWpm(reader.getState().wpm + 25);
-      }
-      break;
     case 'ArrowDown':
+    case 'PageDown':
       event.preventDefault();
       if (isPortraitMode) {
         void navigateToNextReel();
@@ -447,38 +435,22 @@ window.addEventListener('keydown', (event) => {
         reader.setWpm(reader.getState().wpm - 25);
       }
       break;
+    case 'ArrowUp':
+    case 'PageUp':
+      event.preventDefault();
+      if (isPortraitMode) {
+        void navigateToPreviousReel();
+      } else {
+        reader.setWpm(reader.getState().wpm + 25);
+      }
+      break;
     default:
       break;
   }
 });
 
-// Handle scroll/wheel events in reel mode
-let wheelTimeout: number | null = null;
-window.addEventListener('wheel', (event) => {
-  const isPortraitMode = document.body.classList.contains('mode-portrait');
+// Wheel events are now handled internally by ReelsPlayer to allow native physics/snapping
 
-  if (!isPortraitMode) {
-    return; // Allow normal scrolling in standard mode
-  }
-
-  event.preventDefault();
-
-  // Debounce wheel events
-  if (wheelTimeout) {
-    return;
-  }
-
-  wheelTimeout = window.setTimeout(() => {
-    wheelTimeout = null;
-  }, 300);
-
-  // Scroll down (deltaY > 0) = next reel, scroll up (deltaY < 0) = previous reel (Instagram style)
-  if (event.deltaY > 0) {
-    void navigateToNextReel();
-  } else if (event.deltaY < 0) {
-    void navigateToPreviousReel();
-  }
-}, { passive: false });
 
 async function loadReelPage(offset: number, align: 'start' | 'end'): Promise<void> {
   if (!reelState.docId) return;
@@ -494,7 +466,7 @@ async function loadReelPage(offset: number, align: 'start' | 'end'): Promise<voi
       return;
     }
 
-    reelRail.setReels(page.reels, { activeReelId: reelState.activeReelId, align });
+    reelRail.setReels(page.reels, { activeReelId: reelState.activeReelId || undefined, align });
     reelRail.setLoading(false);
 
     if (!reelState.activeReelId && page.reels[0]) {
@@ -552,6 +524,7 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
       (reel) => {
         reelsReceived++;
         reelRail.appendReel(reel, docId);
+        reelsPlayer.addReel(reel);
 
         // Update Reel Mode status
         reelsPlayer.setLoading(false); // Hide loader once we have at least one reel or if we want to show status
@@ -575,8 +548,8 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
           }
         }
 
-        // Auto-select first reel
-        if (!reelState.activeReelId && reel.index === 0) {
+        // Auto-select and play the first incoming reel immediately
+        if (!reelState.activeReelId) {
           selectReel(reel, true);
         }
       },
@@ -609,10 +582,13 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
 
 function resetReelState(docId: string): void {
   reelState.docId = docId;
-  reelState.activeReelId = '';
+  reelState.activeReelId = null;
+  reelState.currentReelIndex = 0;
   reelState.currentPage = null;
   reelCache.clear();
   reelRequests.clear();
+  reelRail.setReels([]);
+  reelsPlayer.clearReels();
 }
 
 async function requestReelPage(offset: number): Promise<ReelPage> {
@@ -662,38 +638,35 @@ function scheduleReelAutoplay(reelId: string): void {
   }, REEL_TRANSITION_PAUSE_MS);
 }
 
-function selectReel(reel: Reel, autoplay: boolean): void {
+function selectReel(reel: Reel, autoplay: boolean, scroll: boolean = true): void {
   clearReelAutoplayTimeout();
   reelState.activeReelId = reel.reelId;
   reelState.currentReelIndex = reel.index;
   reelsPlayer.showEmptyState(false);
 
-  // Apply background based on style
-  if (activeStyle === 'cartoon') {
-    // Pick a random cartoon background
-    // This is simple randomization. Ideally we'd keep it consistent per reel or have a sub-selector.
+  if (scroll) {
+    reelsPlayer.scrollToReel(reel.reelId);
+  }
+
+  // Update central background (standard mode)
+  if (manualBackgroundId) {
+    void background.setStyle(manualBackgroundId);
+  } else if (activeStyle === 'cartoon') {
     const cartoons = ['stickman', 'blobs', 'rain'];
     const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
     void background.setStyle(randomId);
   } else if (activeStyle === 'calming') {
     void background.setStyle(reel.backgroundId);
   }
-  // 'real' mode falls through (or could have its own logic)
 
   const reelFrames = groupTokens(tokenize(reel.text), currentChunkSize);
   reader.setFrames(reelFrames, { preservePosition: false });
 
   if (autoplay) {
-    // restart from beginning explicitly to be sure
     reader.seek(-reader.getState().currentIndex);
-
-    // Explicitly reset progress UI immediately to 0
-    // This prevents the "old" progress from lingering during the transition
     reelsPlayer.setProgress(0, reelFrames.length);
-
     reader.play();
   } else {
-    // Even if not autoplaying, we are at the start
     reader.seek(-reader.getState().currentIndex);
     reelsPlayer.setProgress(0, reelFrames.length);
   }
