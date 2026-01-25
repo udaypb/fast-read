@@ -1,0 +1,26 @@
+[project]
+name = "tts-server"
+version = "0.1.0"
+description = "Local Spark-TTS FastAPI server"
+requires-python = ">=3.10,<3.12"
+
+dependencies = [
+  "torch==2.1.2",
+  "torchaudio==2.1.2",
+
+  # IMPORTANT pins
+  "numpy<2.0",
+  "transformers==4.46.2",
+
+  "accelerate==0.26.1",
+  "einops==0.8.1",
+  "einx==0.3.0",
+  "omegaconf==2.3.0",
+  "packaging==24.2",
+  "safetensors==0.5.2",
+  "soxr==0.5.0.post1",
+  "tqdm==4.66.5",
+  "soundfile>=0.12.1",
+  "fastapi>=0.110.0",
+  "uvicorn>=0.27.0"
+]

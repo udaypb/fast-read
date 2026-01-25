@@ -6,6 +6,10 @@ export type CondenseRequest = {
 export type CondenseResult = {
   text: string;
   title?: string;
+  script?: {
+    characterId: string;
+    text: string;
+  }[];
 };
 
 export type AnalyzeRequest = {

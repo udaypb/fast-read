@@ -3,10 +3,15 @@ export type Token = {
   isPunctuation: boolean;
 };
 
+export type CharacterSide = 'left' | 'right';
+
 export type Frame = {
   index: number;
   tokens: Token[];
   text: string;
+  characterId?: string;
+  characterSide?: CharacterSide;
+  characterAssetUri?: string;
 };
 
 export type ReaderState = {

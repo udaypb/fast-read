@@ -1,6 +1,6 @@
 import { gsap } from 'gsap';
 import type { Frame } from '../reader/types';
-import type { Reel } from '../api/types';
+import type { Reel, CharacterAsset, CharacterLine } from '../api/types';
 import { Background } from './Background';
 
 export enum DisplayMode {
@@ -176,7 +176,7 @@ export class ReelsPlayer {
             const emptyReel = {
                 reelId: 'empty',
                 title: 'Empty',
-                text: 'No reels to show',
+                text: 'No reels to show — import a PDF or text to start scrolling!',
                 index: 0,
                 wordCount: 0,
                 estDurationSec: 0,
@@ -187,7 +187,7 @@ export class ReelsPlayer {
             const screen = this.screens.get('empty');
             if (screen) {
                 screen.activate('intro');
-                screen.setTextContent('No reels to show');
+                screen.setTextContent('No reels to show — import a PDF or text to start scrolling!');
                 screen.addTextClass('reels-player-text--empty');
             }
             return;
@@ -197,7 +197,7 @@ export class ReelsPlayer {
 
         if (show) {
             if (activeScreen) {
-                activeScreen.setTextContent('No reels to show');
+                activeScreen.setTextContent('No reels to show — import a PDF or text to start scrolling!');
                 activeScreen.addTextClass('reels-player-text--empty');
             }
             this.playPauseBtn.style.display = 'none';
@@ -434,9 +434,12 @@ export class ReelsPlayer {
 class ReelScreen {
     private root: HTMLElement;
     private textEl: HTMLElement;
+    private characterOverlay: HTMLElement;
+    private characterImage: HTMLImageElement;
     private backgroundContainer: HTMLElement;
     private background: Background;
     private reel: Reel;
+    private characterAssetMap: Map<string, CharacterAsset> = new Map();
 
     constructor(reel: Reel) {
         this.reel = reel;
@@ -453,7 +456,18 @@ class ReelScreen {
         this.textEl.className = 'reels-player-text';
         this.textEl.textContent = ''; // Will be updated by reader
 
-        this.root.append(this.backgroundContainer, this.textEl);
+        this.characterOverlay = document.createElement('div');
+        this.characterOverlay.className = 'reel-character-overlay';
+
+        this.characterImage = document.createElement('img');
+        this.characterImage.className = 'reel-character-image';
+        this.characterImage.alt = '';
+        this.characterImage.loading = 'lazy';
+        this.characterOverlay.append(this.characterImage);
+
+        this.refreshCharacterAssets();
+
+        this.root.append(this.backgroundContainer, this.characterOverlay, this.textEl);
     }
 
     getElement(): HTMLElement {
@@ -465,7 +479,9 @@ class ReelScreen {
     }
 
     activate(manualStyleId: string | null): void {
-        const styleId = (this.reel.reelId === 'empty') ? 'intro' : (manualStyleId || this.reel.backgroundId || 'net');
+        const styleId = (this.reel.reelId === 'empty')
+            ? (manualStyleId || 'intro')
+            : (manualStyleId || this.reel.backgroundId || 'net');
         this.background.start(styleId);
     }
 
@@ -476,9 +492,12 @@ class ReelScreen {
     setFrame(frame: Frame | null): void {
         if (!frame) {
             this.textEl.textContent = '';
+            this.clearCharacter();
             return;
         }
         this.textEl.textContent = frame.text;
+
+        this.updateCharacterFromFrame(frame);
 
         this.textEl.animate(
             [
@@ -499,5 +518,47 @@ class ReelScreen {
 
     removeTextClass(className: string): void {
         this.textEl.classList.remove(className);
+    }
+
+    private refreshCharacterAssets(): void {
+        this.characterAssetMap.clear();
+        (this.reel.characterAssets ?? []).forEach((asset) => {
+            if (asset?.id) {
+                this.characterAssetMap.set(asset.id, asset);
+            }
+        });
+    }
+
+    private resolveCharacterLine(frame: Frame): CharacterLine | null {
+        if (!frame.characterId || !this.reel.characterScript?.length) return null;
+        const match = this.reel.characterScript.find((line) => line.characterId === frame.characterId);
+        return match ?? null;
+    }
+
+    private updateCharacterFromFrame(frame: Frame): void {
+        if (!frame.characterId) {
+            this.clearCharacter();
+            return;
+        }
+
+        const line = this.resolveCharacterLine(frame);
+        const asset = this.characterAssetMap.get(frame.characterId);
+        const assetUri = frame.characterAssetUri || line?.assetUri || asset?.uri;
+        const side = frame.characterSide || line?.side || asset?.side || 'left';
+
+        if (!assetUri) {
+            this.clearCharacter();
+            return;
+        }
+
+        this.characterOverlay.dataset.side = side;
+        this.characterImage.src = assetUri;
+        this.characterOverlay.classList.add('reel-character-overlay--active');
+    }
+
+    private clearCharacter(): void {
+        this.characterOverlay.classList.remove('reel-character-overlay--active');
+        this.characterOverlay.dataset.side = '';
+        this.characterImage.removeAttribute('src');
     }
 }

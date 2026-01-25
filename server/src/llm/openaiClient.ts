@@ -56,7 +56,8 @@ export class OpenAiClient implements LlmClient {
       console.log('[Condense] Using JSON extracted content');
       return {
         text: json.text,
-        title: typeof json.title === 'string' ? json.title : undefined
+        title: typeof json.title === 'string' ? json.title : undefined,
+        script: extractScript(json)
       };
     }
 
@@ -353,4 +354,21 @@ function extractTags(value: unknown): string[] | undefined {
     return value.filter((item): item is string => typeof item === 'string');
   }
   return undefined;
+}
+
+function extractScript(parsed: Record<string, unknown>): { characterId: string; text: string }[] | undefined {
+  const raw = parsed.script;
+  if (!Array.isArray(raw)) return undefined;
+  const script = raw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const entry = item as Record<string, unknown>;
+      const characterId = typeof entry.characterId === 'string' ? entry.characterId.trim() : '';
+      const text = typeof entry.text === 'string' ? entry.text.trim() : '';
+      if (!characterId || !text) return null;
+      return { characterId, text };
+    })
+    .filter((item): item is { characterId: string; text: string } => Boolean(item));
+
+  return script.length > 0 ? script : undefined;
 }

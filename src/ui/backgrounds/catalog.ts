@@ -158,7 +158,8 @@ export const backgroundCatalog: BackgroundDefinition[] = [
     type: BackgroundType.Video,
     url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/satisfying_1.mp4',
     category: 'satisfying',
-    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Sand'
+    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Sand',
+    textTone: 'dark'
   },
   {
     id: 'satisfying_2',
@@ -166,7 +167,8 @@ export const backgroundCatalog: BackgroundDefinition[] = [
     type: BackgroundType.Video,
     url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/color_low.mp4',
     category: 'satisfying',
-    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Colors'
+    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Colors',
+    textTone: 'dark'
   },
   {
     id: 'satisfying_3',
@@ -174,7 +176,8 @@ export const backgroundCatalog: BackgroundDefinition[] = [
     type: BackgroundType.Video,
     url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/satisfying_2.mp4',
     category: 'satisfying',
-    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Kinetic'
+    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Kinetic',
+    textTone: 'dark'
   },
   {
     id: 'satisfying_4',
@@ -182,7 +185,8 @@ export const backgroundCatalog: BackgroundDefinition[] = [
     type: BackgroundType.Video,
     url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/satisfying_3.mp4',
     category: 'satisfying',
-    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Flow'
+    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Flow',
+    textTone: 'dark'
   },
 
   // Subway Surfers
@@ -254,7 +258,8 @@ export const backgroundCatalog: BackgroundDefinition[] = [
     }),
     category: 'intro',
     type: BackgroundType.Custom,
-    thumbnail: 'https://placehold.co/120x80/FFF/000?text=Welcome'
+    thumbnail: 'https://placehold.co/120x80/FFF/000?text=Welcome',
+    textTone: 'dark'
   },
   // Temple Run (Keeping placeholder for now)
   {

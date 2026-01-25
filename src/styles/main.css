@@ -13,6 +13,8 @@
   --font-display: 'Iowan Old Style', 'Palatino', 'Times New Roman', serif;
   --font-ui: 'Avenir Next', 'Avenir', 'Helvetica Neue', sans-serif;
   --reels-bg: #000000;
+  --reading-text-color: #f5f5f5;
+  --reading-text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Main Styles */
@@ -270,6 +272,25 @@ body {
   letter-spacing: 0.01em;
 }
 
+body[data-text-tone='dark'] {
+  --reading-text-color: #111111;
+  --reading-text-shadow: 0 4px 20px rgba(255, 255, 255, 0.35);
+}
+
+body[data-text-tone='light'] {
+  --reading-text-color: #f5f5f5;
+  --reading-text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Disable text selection in standard + reel modes (allow exceptions below) */
+body.mode-standard,
+body.mode-standard *,
+body.mode-portrait,
+body.mode-portrait * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .bg-layer {
   position: fixed;
   inset: 0;
@@ -435,6 +456,8 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
+  color: var(--reading-text-color);
+  text-shadow: var(--reading-text-shadow);
 }
 
 .controls-stack {
@@ -741,6 +764,22 @@ body {
 .import-overlay--open {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* Allow selection in import PDF + text entry UI */
+.import-overlay,
+.import-panel,
+.import-title,
+.import-label,
+.import-action,
+.import-textarea,
+.import-meta,
+.import-count,
+.import-error,
+.import-close,
+.import-button {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .import-panel {
@@ -1192,6 +1231,30 @@ body {
   box-sizing: border-box;
 }
 
+@supports (height: 100dvh) {
+  .reels-player--portrait .reels-player-content {
+    height: 100dvh;
+  }
+}
+
+@media (max-width: 640px), (max-height: 700px) {
+  .reels-player--portrait .reels-player-content {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto;
+    border-radius: 0;
+    border-width: 0;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 640px), (max-height: 700px) {
+  .reels-player--portrait .reels-player-content {
+    height: 100dvh;
+  }
+}
+
 /* Vertical Pager */
 .reels-pager {
   position: absolute;
@@ -1257,9 +1320,9 @@ body {
   font-family: var(--font-display);
   font-size: clamp(24px, 7vw, 48px);
   font-weight: 800;
-  color: #fff;
+  color: var(--reading-text-color);
   text-align: center;
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  text-shadow: var(--reading-text-shadow);
   pointer-events: none;
   z-index: 3;
   letter-spacing: -0.02em;
@@ -1268,6 +1331,40 @@ body {
   box-sizing: border-box;
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+.reel-character-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  height: 55%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+  transition: opacity 0.2s ease, transform 0.3s ease;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.reel-character-overlay[data-side='right'] {
+  left: auto;
+  right: 0;
+  justify-content: flex-end;
+}
+
+.reel-character-overlay--active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.reel-character-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.6));
 }
 
 /* Reel Players buttons */
@@ -1466,7 +1563,8 @@ body.mode-portrait {
 .reels-player-text--empty {
   font-size: 2rem !important;
   font-weight: 700 !important;
-  color: #333 !important;
+  color: var(--reading-text-color) !important;
+  text-shadow: var(--reading-text-shadow) !important;
   letter-spacing: -0.02em;
   text-align: center;
   max-width: 80%;
@@ -1576,6 +1674,81 @@ body.mode-portrait {
 
 .settings-section:last-child {
   margin-bottom: 0;
+}
+
+.settings-reel-section {
+  display: none;
+}
+
+body.mode-portrait .settings-reel-section {
+  display: block;
+}
+
+.settings-reel-previews {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.settings-reel-previews::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-reel-card {
+  flex-shrink: 0;
+  width: 130px;
+  aspect-ratio: 1 / 1;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-family: var(--font-ui);
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.settings-reel-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.settings-reel-card--active {
+  border-color: var(--accent);
+  background: rgba(249, 226, 176, 0.12);
+  box-shadow: 0 0 12px rgba(249, 226, 176, 0.25);
+}
+
+.settings-reel-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
+}
+
+.settings-reel-empty {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 8px 4px;
+  font-style: italic;
 }
 
 .settings-section-header {
@@ -1994,7 +2167,7 @@ body.mode-portrait {
   display: flex;
   align-items: center;
   gap: 8px;
-  z-index: 40;
+  z-index: 120;
   pointer-events: none;
   transition: opacity 0.3s ease, transform 0.3s ease;
   backdrop-filter: blur(8px);

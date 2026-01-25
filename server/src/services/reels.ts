@@ -154,6 +154,34 @@ async function analyzeReel(
   }
 }
 
+const DEFAULT_CHARACTER_ASSETS = [
+  {
+    id: 'character1',
+    uri: 'https://example-bucket/character1.svg',
+    side: 'left' as const,
+    label: 'Character 1'
+  },
+  {
+    id: 'character2',
+    uri: 'https://example-bucket/character2.svg',
+    side: 'right' as const,
+    label: 'Character 2'
+  }
+];
+
+function buildFallbackScript(text: string): { characterId: string; text: string }[] {
+  const sentences = text
+    .match(/[^.!?]+[.!?]?/g)
+    ?.map((sentence) => sentence.trim())
+    .filter(Boolean) ?? [];
+  const lines = sentences.length > 0 ? sentences : [text.trim()].filter(Boolean);
+
+  return lines.map((line, index) => ({
+    characterId: index % 2 === 0 ? 'character1' : 'character2',
+    text: line
+  }));
+}
+
 export async function buildReels(options: {
   docId: string;
   text: string;
@@ -233,12 +261,21 @@ export async function buildReels(options: {
             const analysis = await analyzeReel(reelText, options.llm, backgroundSummary);
             const background = selectBackground(analysis, backgroundCatalog, i);
 
+            const baseScript = condensed.script?.length ? condensed.script : buildFallbackScript(reelText);
+            const characterScript = baseScript.map((line) => ({
+              characterId: line.characterId,
+              text: line.text,
+              side: line.characterId === 'character2' ? 'right' : 'left'
+            }));
+
             const reel: Reel = {
               docId: options.docId,
               reelId: `${options.docId}-${i}`,
               index: i,
               title: condensed.title || createTitle(reelText),
               text: reelText,
+              characterAssets: DEFAULT_CHARACTER_ASSETS,
+              characterScript,
               backgroundId: background.id,
               backgroundModule: background.module,
               backgroundLabel: background.label,

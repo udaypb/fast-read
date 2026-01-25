@@ -5,6 +5,7 @@ import { Reader } from './reader/Reader';
 import { tokenize } from './reader/Tokenizer';
 import { createDocFromFile, createDocFromText, getReelPage, streamReels } from './api/client';
 import type { Reel, ReelPage } from './api/types';
+import type { Frame } from './reader/types';
 import { Background } from './ui/Background';
 import { Controls } from './ui/Controls';
 import { ImportDialog } from './ui/ImportDialog';
@@ -14,7 +15,7 @@ import { SeekBar } from './ui/SeekBar';
 import { SettingsPanel } from './ui/SettingsPanel';
 import { ReelsPlayer, DisplayMode } from './ui/ReelsPlayer';
 import { SettingsButton } from './ui/SettingsButton';
-import { backgroundCatalog } from './ui/backgrounds/catalog';
+import { backgroundCatalog, getBackgroundDefinition } from './ui/backgrounds/catalog';
 
 const SAMPLE_TEXT =
   'Fast Read is a minimalist speed reading demo. It keeps the words steady, inside two calm guide bars, so your eyes stay centered. Use the controls to play, pause, or adjust the speed. Tap space to start, then arrow keys to jump or change pace.';
@@ -32,6 +33,24 @@ const DEFAULT_WPM = 300;
 const DEFAULT_CHUNK_SIZE = 3;
 const REEL_PAGE_LIMIT = 5;
 const REEL_TRANSITION_PAUSE_MS = 1000;
+
+function setReadingTextTone(tone?: 'light' | 'dark'): void {
+  if (tone === 'dark' || tone === 'light') {
+    document.body.dataset.textTone = tone;
+    return;
+  }
+
+  document.body.dataset.textTone = 'light';
+}
+
+function applyBackgroundAndTone(styleId: string, options?: { allowManualTone?: boolean }): void {
+  const definition = getBackgroundDefinition(styleId);
+  const tone = definition?.textTone;
+  if (options?.allowManualTone !== false) {
+    setReadingTextTone(tone);
+  }
+  void background.setStyle(styleId);
+}
 
 let activeText = SAMPLE_TEXT;
 let currentChunkSize = DEFAULT_CHUNK_SIZE;
@@ -114,7 +133,7 @@ settingsPanel.bind({
 
     if (specificId) {
       manualBackgroundId = specificId;
-      void background.setStyle(specificId);
+      applyBackgroundAndTone(specificId);
       reelsPlayer.setManualBackground(specificId);
       return;
     }
@@ -127,13 +146,13 @@ settingsPanel.bind({
     if (activeStyle === 'cartoon') {
       const cartoons = ['stickman', 'blobs', 'rain'];
       const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
-      void background.setStyle(randomId);
+      applyBackgroundAndTone(randomId);
     } else if (activeStyle === 'calming') {
       const currentReelId = reelState.activeReelId;
-      void background.setStyle('net');
+      applyBackgroundAndTone('net');
       const reel = reelState.currentPage?.reels.find(r => r.reelId === currentReelId);
       if (reel) {
-        void background.setStyle(reel.backgroundId);
+        applyBackgroundAndTone(reel.backgroundId);
       }
     } else if (activeStyle === 'real') {
       console.log('Real mode selected (placeholder)');
@@ -141,7 +160,7 @@ settingsPanel.bind({
       // Auto-select first item if exists
       const item = backgroundCatalog.find(b => b.category === activeStyle);
       if (item) {
-        void background.setStyle(item.id);
+        applyBackgroundAndTone(item.id);
       }
     }
   },
@@ -156,6 +175,9 @@ settingsPanel.bind({
   onWpmChange: (wpm) => reader.setWpm(wpm),
   onChunkSizeChange: (size) => {
     updateChunkSize(size);
+  },
+  onReelSelect: (reel) => {
+    selectReel(reel, true);
   }
 });
 
@@ -200,7 +222,7 @@ void runIntroSequence();
 
 async function runIntroSequence() {
   document.body.classList.add('intro-active');
-  await background.setStyle('intro');
+  applyBackgroundAndTone('intro');
 
   const introTextWrapper = document.createElement('div');
   introTextWrapper.className = 'intro-text-wrapper';
@@ -284,7 +306,7 @@ function updateChunkSize(size: number): void {
     // Re-chunk current reel
     const reel = reelState.currentPage?.reels.find(r => r.reelId === reelState.activeReelId);
     if (reel) {
-      const reelFrames = groupTokens(tokenize(reel.text), size);
+      const reelFrames = buildReelFrames(reel, size);
       reader.setFrames(reelFrames, { preservePosition: true });
     }
   } else {
@@ -401,7 +423,8 @@ async function navigateToPreviousReel(): Promise<void> {
 
 function showEmptyReel(): void {
   reelsPlayer.showEmptyState(true);
-  void background.setStyle('intro');
+  settingsPanel.setReels([]);
+  applyBackgroundAndTone(manualBackgroundId || 'intro');
   reader.pause();
 }
 
@@ -467,6 +490,7 @@ async function loadReelPage(offset: number, align: 'start' | 'end'): Promise<voi
     }
 
     reelRail.setReels(page.reels, { activeReelId: reelState.activeReelId || undefined, align });
+    settingsPanel.setReels(page.reels, { activeReelId: reelState.activeReelId || undefined, align });
     reelRail.setLoading(false);
 
     if (!reelState.activeReelId && page.reels[0]) {
@@ -548,6 +572,11 @@ async function ingestDoc(createDoc: () => Promise<{ docId: string }>): Promise<v
           }
         }
 
+        settingsPanel.setReels(reelState.currentPage.reels, {
+          activeReelId: reelState.activeReelId || undefined,
+          align: 'end'
+        });
+
         // Auto-select and play the first incoming reel immediately
         if (!reelState.activeReelId) {
           selectReel(reel, true);
@@ -588,6 +617,7 @@ function resetReelState(docId: string): void {
   reelCache.clear();
   reelRequests.clear();
   reelRail.setReels([]);
+  settingsPanel.setReels([]);
   reelsPlayer.clearReels();
 }
 
@@ -643,6 +673,7 @@ function selectReel(reel: Reel, autoplay: boolean, scroll: boolean = true): void
   reelState.activeReelId = reel.reelId;
   reelState.currentReelIndex = reel.index;
   reelsPlayer.showEmptyState(false);
+  settingsPanel.setActiveReel(reel.reelId);
 
   if (scroll) {
     reelsPlayer.scrollToReel(reel.reelId);
@@ -650,16 +681,16 @@ function selectReel(reel: Reel, autoplay: boolean, scroll: boolean = true): void
 
   // Update central background (standard mode)
   if (manualBackgroundId) {
-    void background.setStyle(manualBackgroundId);
+    applyBackgroundAndTone(manualBackgroundId);
   } else if (activeStyle === 'cartoon') {
     const cartoons = ['stickman', 'blobs', 'rain'];
     const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
-    void background.setStyle(randomId);
+    applyBackgroundAndTone(randomId);
   } else if (activeStyle === 'calming') {
-    void background.setStyle(reel.backgroundId);
+    applyBackgroundAndTone(reel.backgroundId);
   }
 
-  const reelFrames = groupTokens(tokenize(reel.text), currentChunkSize);
+  const reelFrames = buildReelFrames(reel, currentChunkSize);
   reader.setFrames(reelFrames, { preservePosition: false });
 
   if (autoplay) {
@@ -670,4 +701,29 @@ function selectReel(reel: Reel, autoplay: boolean, scroll: boolean = true): void
     reader.seek(-reader.getState().currentIndex);
     reelsPlayer.setProgress(0, reelFrames.length);
   }
+}
+
+function buildReelFrames(reel: Reel, chunkSize: number): Frame[] {
+  const script = reel.characterScript ?? [];
+  if (script.length === 0) {
+    return groupTokens(tokenize(reel.text), chunkSize);
+  }
+
+  const frames: Frame[] = [];
+  let frameIndex = 0;
+
+  script.forEach((line) => {
+    if (!line.text) return;
+    const tokens = tokenize(line.text);
+    const lineFrames = groupTokens(tokens, chunkSize).map((frame) => ({
+      ...frame,
+      index: frameIndex++,
+      characterId: line.characterId,
+      characterSide: line.side,
+      characterAssetUri: line.assetUri
+    }));
+    frames.push(...lineFrames);
+  });
+
+  return frames;
 }

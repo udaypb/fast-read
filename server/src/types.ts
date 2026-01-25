@@ -1,11 +1,29 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
+export type CharacterSide = 'left' | 'right';
+
+export type CharacterAsset = {
+  id: string;
+  uri: string;
+  side: CharacterSide;
+  label?: string;
+};
+
+export type CharacterLine = {
+  characterId: string;
+  text: string;
+  side?: CharacterSide;
+  assetUri?: string;
+};
+
 export type Reel = {
   docId: string;
   reelId: string;
   index: number;
   title: string;
   text: string;
+  characterAssets?: CharacterAsset[];
+  characterScript?: CharacterLine[];
   backgroundId: string;
   backgroundModule: string;
   backgroundLabel: string;

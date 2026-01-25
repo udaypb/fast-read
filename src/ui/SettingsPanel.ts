@@ -1,5 +1,6 @@
 import { DisplayMode } from './ReelsPlayer';
 import { backgroundCatalog } from './backgrounds/catalog';
+import type { Reel } from '../api/types';
 
 export type SettingsPanelHandlers = {
     onModeChange: (mode: DisplayMode) => void;
@@ -9,6 +10,7 @@ export type SettingsPanelHandlers = {
     onForward?: () => void;
     onWpmChange?: (wpm: number) => void;
     onChunkSizeChange?: (size: number) => void;
+    onReelSelect?: (reel: Reel) => void;
 };
 
 export class SettingsPanel {
@@ -27,6 +29,9 @@ export class SettingsPanel {
     private modeButtons: Map<DisplayMode, HTMLButtonElement> = new Map();
     private categoryTabs: HTMLElement[] = [];
     private previewsContainer: HTMLElement;
+    private reels: Reel[] = [];
+    private activeReelId: string | null = null;
+    private reelPreviewsContainer: HTMLElement;
 
     private categories = [
         { id: 'calming', label: 'Calming' },
@@ -57,6 +62,21 @@ export class SettingsPanel {
 
         this.contentWrapper = document.createElement('div');
         this.contentWrapper.className = 'settings-panel-content';
+
+        // Reel previews section (Reel Mode only)
+        const reelsSection = document.createElement('div');
+        reelsSection.className = 'settings-section settings-reel-section';
+
+        const reelsHeader = document.createElement('div');
+        reelsHeader.className = 'settings-section-header';
+        reelsHeader.textContent = 'Reels';
+
+        this.reelPreviewsContainer = document.createElement('div');
+        this.reelPreviewsContainer.className = 'settings-reel-previews';
+        this.renderReelPreviews();
+
+        reelsSection.append(reelsHeader, this.reelPreviewsContainer);
+        this.contentWrapper.appendChild(reelsSection);
 
         // Playback Controls Section
         const controlsSection = document.createElement('div');
@@ -306,6 +326,49 @@ export class SettingsPanel {
         });
     }
 
+    private renderReelPreviews(): void {
+        this.reelPreviewsContainer.innerHTML = '';
+
+        if (this.reels.length === 0) {
+            const msg = document.createElement('div');
+            msg.className = 'settings-reel-empty';
+            msg.textContent = 'No reels yet';
+            this.reelPreviewsContainer.appendChild(msg);
+            return;
+        }
+
+        this.reels.forEach((reel) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'settings-reel-card';
+            btn.dataset.reelId = reel.reelId;
+            if (this.activeReelId === reel.reelId) {
+                btn.classList.add('settings-reel-card--active');
+            }
+
+            const title = document.createElement('div');
+            title.className = 'settings-reel-title';
+            title.textContent = reel.title || `Reel ${reel.index + 1}`;
+
+            btn.appendChild(title);
+            btn.addEventListener('click', () => {
+                this.activeReelId = reel.reelId;
+                this.updateReelPreviewState();
+                this.handlers?.onReelSelect?.(reel);
+            });
+
+            this.reelPreviewsContainer.appendChild(btn);
+        });
+    }
+
+    private updateReelPreviewState(): void {
+        const cards = this.reelPreviewsContainer.querySelectorAll('.settings-reel-card');
+        cards.forEach((card) => {
+            const isActive = (card as HTMLElement).dataset.reelId === this.activeReelId;
+            card.classList.toggle('settings-reel-card--active', isActive);
+        });
+    }
+
     private updatePreviewState(): void {
         const buttons = this.previewsContainer.querySelectorAll('.settings-preview-item');
         const items = backgroundCatalog.filter(item => item.category === this.activeCategory);
@@ -360,7 +423,8 @@ export class SettingsPanel {
                 target.tagName === 'BUTTON' ||
                 target.tagName === 'INPUT' ||
                 target.closest('.settings-preview-item') ||
-                target.closest('.settings-style-tab')
+                target.closest('.settings-style-tab') ||
+                target.closest('.settings-reel-card')
             )) return;
 
             const content = this.contentWrapper;
@@ -427,6 +491,24 @@ export class SettingsPanel {
         this.activeCategory = category;
         this.updateTabState();
         this.renderPreviews();
+    }
+
+    public setReels(reels: Reel[], options?: { activeReelId?: string; align?: 'start' | 'end' }): void {
+        this.reels = reels;
+        if (options?.activeReelId !== undefined) {
+            this.activeReelId = options.activeReelId;
+        }
+        this.renderReelPreviews();
+        if (options?.align === 'end') {
+            this.reelPreviewsContainer.scrollLeft = this.reelPreviewsContainer.scrollWidth;
+        } else if (options?.align === 'start') {
+            this.reelPreviewsContainer.scrollLeft = 0;
+        }
+    }
+
+    public setActiveReel(reelId: string | null): void {
+        this.activeReelId = reelId;
+        this.updateReelPreviewState();
     }
 
     public setWpm(wpm: number): void {
