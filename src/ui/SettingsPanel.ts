@@ -483,7 +483,6 @@ export class SettingsPanel {
 
         const onPointerUp = (e: PointerEvent) => {
             if (!isDragging) return;
-            isDragging = false;
             this.root.releasePointerCapture(e.pointerId);
             handleDragEnd();
         };

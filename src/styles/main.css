@@ -1127,23 +1127,23 @@ body.mode-portrait * {
   }
 
   #app {
-    padding: max(16px, env(safe-area-inset-top)) 0 max(24px, env(safe-area-inset-bottom));
-    justify-content: center;
+    padding: max(8px, env(safe-area-inset-top)) 0 max(12px, env(safe-area-inset-bottom));
+    justify-content: flex-start;
     /* Center content on landing */
     gap: 20px;
-    height: auto;
-    min-height: 100vh;
+    height: 100svh;
+    min-height: 100svh;
   }
 
   .reader-shell {
-    margin-top: auto;
+    margin-top: 0;
     /* Push down to help center the group */
   }
 
   .controls-stack {
     width: calc(100% - 32px);
     margin-top: 12px;
-    margin-bottom: auto;
+    margin-bottom: 0;
     /* Push up to help center the group */
   }
 
@@ -1203,6 +1203,15 @@ body.mode-portrait * {
 
   .reel-rail-track {
     justify-content: flex-start;
+  }
+}
+
+@supports (height: 100dvh) {
+  @media (max-width: 640px) {
+    #app {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
   }
 }
 

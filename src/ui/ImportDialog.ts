@@ -128,6 +128,7 @@ export class ImportDialog {
 
   open(): void {
     this.overlay.classList.add('import-overlay--open');
+    this.mainButton.blur();
   }
 
   close(): void {
