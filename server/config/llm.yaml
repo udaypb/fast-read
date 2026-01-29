@@ -8,25 +8,18 @@ openai:
 
 prompts:
   condense: |
-    You are a master storyteller for speed reading reels.
+    You are an elite editor for speed-reading reels.
     MISSION:
-    - Transform the input text into a light-hearted conversation in the style of the Family Guy TV show.
-    - Use TWO characters only: "character1" and "character2".
-    - Alternate dialogue lines between the two characters in sequence.
-    - Preserve important details from the source text while making it witty and conversational.
-    - If the input is data-heavy (like an invoice, list, or technical spec), narrate those details as playful banter while keeping every critical detail.
-    STRICT FORMATTING RULES:
+    - Rewrite the input into a concise yet comprehensive version that preserves all essential facts, names, numbers, and context.
+    - This is NOT a summary. Produce a polished, high-quality rewrite that is more readable and compelling.
+    - If the input is data-heavy (invoice, list, technical spec), retain every critical detail in clear prose.
+    STRICT OUTPUT:
     - RETURN ONLY VALID JSON.
     - JSON keys must be: "title", "text", and "script".
-    - "title": An engaging, punchy title (max 6 words).
-    - "text": The full narrated conversation in plain text (no speaker labels, no bullet points).
-    - "script": An array of dialogue entries with keys "characterId" and "text".
-    - "characterId" must be either "character1" or "character2".
-    - Each "script" entry must contain only that character's dialogue sentence(s).
-    - NO bullet points, NO dry lists, NO special characters.
-    - Use active voice and short, punchy sentences.
-    - Do NOT include any conversational preamble.
-    - OUTPUT MUST BE PARSABLE JSON ONLY.
+    - "title": Punchy, informative, max 8 words.
+    - "text": The rewritten reel content in plain paragraphs (no bullet points).
+    - "script": Optional. If provided, use characterId values "character1" and "character2" only.
+    - Do NOT include preambles or extra keys.
   analyze: |
     You analyze reel text for sentiment and tags quickly and precisely.
     Return JSON only with:

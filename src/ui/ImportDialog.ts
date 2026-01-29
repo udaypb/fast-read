@@ -128,7 +128,6 @@ export class ImportDialog {
 
   open(): void {
     this.overlay.classList.add('import-overlay--open');
-    this.textarea.focus();
   }
 
   close(): void {

@@ -700,7 +700,7 @@ body.mode-portrait * {
 
 .import-root {
   position: fixed;
-  top: 24px;
+  top: max(24px, env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   width: auto;
@@ -1127,7 +1127,7 @@ body.mode-portrait * {
   }
 
   #app {
-    padding: 24px 0;
+    padding: max(16px, env(safe-area-inset-top)) 0 max(24px, env(safe-area-inset-bottom));
     justify-content: center;
     /* Center content on landing */
     gap: 20px;
@@ -1181,11 +1181,12 @@ body.mode-portrait * {
   }
 
   .import-root {
+    top: max(16px, env(safe-area-inset-top));
     margin-bottom: 32px;
   }
 
   .import-root--minimized {
-    top: 16px;
+    top: max(16px, env(safe-area-inset-top));
     right: 16px;
     transform: scale(0.85);
   }
@@ -1490,7 +1491,7 @@ body.mode-portrait .controls-cog {
 /* Mode Selector - Always visible at top */
 .mode-selector {
   position: fixed;
-  top: 20px;
+  top: max(20px, env(safe-area-inset-top));
   left: 20px;
   display: flex;
   gap: 8px;
@@ -1966,7 +1967,7 @@ body.mode-portrait .settings-reel-section {
 
 @media (max-width: 640px) {
   .mode-selector {
-    top: 16px;
+    top: max(16px, env(safe-area-inset-top));
     left: 16px;
     gap: 0;
     padding: 0;
@@ -1997,8 +1998,6 @@ body.mode-portrait .settings-reel-section {
     left: 20px;
     margin: 0 auto;
   }
-
-
 }
 
 /* Reel Transitions */

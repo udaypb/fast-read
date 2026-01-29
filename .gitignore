@@ -23,6 +23,11 @@ build/
 coverage/
 
 ####################################
+# Large models / submodule leftovers
+####################################
+server/tts-server/Spark-TTS-0.5B/
+
+####################################
 # Environment files (VERY IMPORTANT)
 ####################################
 .env

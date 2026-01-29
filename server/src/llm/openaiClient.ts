@@ -34,7 +34,7 @@ export class OpenAiClient implements LlmClient {
 
   async condense(request: CondenseRequest): Promise<CondenseResult> {
     const prompt = this.prompts?.condense ??
-      'You are a master storyteller for speed reading reels. Transform text into a high-energy narrated story. If data-heavy (like invoices), preserve details but narrate them into a simple flow. Return JSON with "title" and "text" fields. No bullet points.';
+      'You are an elite editor for speed-reading reels. Rewrite the input into a concise yet comprehensive version that preserves all essential facts, names, numbers, and context. This is not a summary—produce a polished, high-quality rewrite that is more readable and compelling. Return JSON only with keys "title", "text", and "script". The title must be punchy and informative (max 8 words). "text" must be plain paragraphs with no bullet points. If you include "script", use characterId values "character1" and "character2" only.';
     const payload = {
       model: this.model,
       temperature: DEFAULT_TEMPERATURE,
@@ -147,8 +147,13 @@ function normalizeBaseUrl(baseUrl: string): string {
 }
 
 function buildCondenseUserPrompt(request: CondenseRequest): string {
-  const target = request.targetWords ? `Target words: ${request.targetWords}.` : '';
-  return `Condense the following text. ${target}\n\n${request.text}`.trim();
+  const target = request.targetWords ? `Target length: about ${request.targetWords} words.` : '';
+  return [
+    'Rewrite the following source text for a reel.',
+    target,
+    'SOURCE TEXT:',
+    request.text
+  ].filter(Boolean).join('\n').trim();
 }
 
 function buildAnalyzeUserPrompt(request: AnalyzeRequest): string {

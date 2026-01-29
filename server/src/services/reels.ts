@@ -195,7 +195,7 @@ export async function buildReels(options: {
   const reels: Reel[] = [];
   const backgroundCatalog = getBackgroundCatalog();
   const backgroundSummary = getBackgroundCatalogSummary();
-  const chunkSize = options.chunkSize ?? TARGET_WORDS;
+  const chunkSize = Math.max(MIN_WORDS, options.chunkSize ?? TARGET_WORDS);
 
   let index = 0;
   let tokenCursor = 0;
@@ -257,6 +257,7 @@ export async function buildReels(options: {
               targetWords: chunk.size
             });
             const reelText = condensed.text.trim();
+            const reelTitle = (condensed.title ?? '').trim();
             const wordCount = splitWords(reelText).length;
             const analysis = await analyzeReel(reelText, options.llm, backgroundSummary);
             const background = selectBackground(analysis, backgroundCatalog, i);
@@ -272,7 +273,7 @@ export async function buildReels(options: {
               docId: options.docId,
               reelId: `${options.docId}-${i}`,
               index: i,
-              title: condensed.title || createTitle(reelText),
+              title: reelTitle || createTitle(reelText),
               text: reelText,
               characterAssets: DEFAULT_CHARACTER_ASSETS,
               characterScript,

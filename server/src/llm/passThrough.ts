@@ -4,7 +4,7 @@ export class PassThroughClient implements LlmClient {
   async condense(request: CondenseRequest): Promise<CondenseResult> {
     const text = request.text;
     const script = buildFallbackScript(text);
-    return { text, script };
+    return { text, title: 'Untitled Reel', script };
   }
 
   async analyze(_request: AnalyzeRequest): Promise<AnalyzeResult> {

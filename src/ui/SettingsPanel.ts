@@ -410,64 +410,58 @@ export class SettingsPanel {
         let isDragging = false;
         let isAtTop = true;
 
-        const onPointerDown = (e: PointerEvent) => {
-            // Only allow dragging in portrait mode (bottom sheet)
-            if (!this.isOpen || this.activeMode !== DisplayMode.Portrait) return;
+        const resetDragStyles = () => {
+            this.root.style.transition = '';
+            this.root.style.opacity = '';
+        };
 
-            // Check if clicking on handle or if content is at top
-            const target = e.target as HTMLElement;
+        const maybeStartDrag = (target: HTMLElement, clientY: number): boolean => {
+            // Only allow dragging in portrait mode (bottom sheet)
+            if (!this.isOpen || this.activeMode !== DisplayMode.Portrait) return false;
+
             const isHandle = target.classList.contains('settings-drag-handle');
 
-            // If clicking on a button, input, or interactive link, don't drag
             if (!isHandle && (
                 target.tagName === 'BUTTON' ||
                 target.tagName === 'INPUT' ||
                 target.closest('.settings-preview-item') ||
                 target.closest('.settings-style-tab') ||
                 target.closest('.settings-reel-card')
-            )) return;
+            )) return false;
 
             const content = this.contentWrapper;
             isAtTop = content.scrollTop <= 0;
 
-            // Drag from handle or drag down from top of content
-            if (!isHandle && !isAtTop) return;
+            if (!isHandle && !isAtTop) return false;
 
             isDragging = true;
-            startY = e.clientY;
+            startY = clientY;
             currentY = 0;
-
-            this.root.setPointerCapture(e.pointerId);
             this.root.style.transition = 'none';
+            return true;
         };
 
-        const onPointerMove = (e: PointerEvent) => {
+        const handleDragMove = (clientY: number) => {
             if (!isDragging) return;
 
-            const deltaY = e.clientY - startY;
+            const deltaY = clientY - startY;
             if (deltaY < 0) {
-                // Dragging up? If we are at top, maybe small rubber band? 
-                // For now, just allow moving down.
-                currentY = deltaY * 0.2; // Small resistance
+                currentY = deltaY * 0.2;
             } else {
                 currentY = deltaY;
             }
 
             this.root.style.transform = `translateY(${currentY}px)`;
 
-            // If dragging significantly, fade it?
             const opacity = Math.max(0.5, 1 - (deltaY / 500));
             this.root.style.opacity = String(opacity);
         };
 
-        const onPointerUp = (e: PointerEvent) => {
+        const handleDragEnd = () => {
             if (!isDragging) return;
             isDragging = false;
-            this.root.releasePointerCapture(e.pointerId);
-            this.root.style.transition = '';
-            this.root.style.opacity = '';
+            resetDragStyles();
 
-            // Threshold to close: 100px or fast flick?
             if (currentY > 120) {
                 this.isOpen = false;
                 this.updatePanelState();
@@ -476,10 +470,51 @@ export class SettingsPanel {
             }
         };
 
+        const onPointerDown = (e: PointerEvent) => {
+            const target = e.target as HTMLElement;
+            if (!maybeStartDrag(target, e.clientY)) return;
+
+            this.root.setPointerCapture(e.pointerId);
+        };
+
+        const onPointerMove = (e: PointerEvent) => {
+            handleDragMove(e.clientY);
+        };
+
+        const onPointerUp = (e: PointerEvent) => {
+            if (!isDragging) return;
+            isDragging = false;
+            this.root.releasePointerCapture(e.pointerId);
+            handleDragEnd();
+        };
+
+        const onTouchStart = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            if (!touch) return;
+            const target = e.target as HTMLElement;
+            if (!maybeStartDrag(target, touch.clientY)) return;
+        };
+
+        const onTouchMove = (e: TouchEvent) => {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            if (!touch) return;
+            handleDragMove(touch.clientY);
+            e.preventDefault();
+        };
+
+        const onTouchEnd = () => {
+            handleDragEnd();
+        };
+
         this.root.addEventListener('pointerdown', onPointerDown);
         this.root.addEventListener('pointermove', onPointerMove);
         this.root.addEventListener('pointerup', onPointerUp);
         this.root.addEventListener('pointercancel', onPointerUp);
+        this.root.addEventListener('touchstart', onTouchStart, { passive: false });
+        this.root.addEventListener('touchmove', onTouchMove, { passive: false });
+        this.root.addEventListener('touchend', onTouchEnd);
+        this.root.addEventListener('touchcancel', onTouchEnd);
     }
 
     public setMode(mode: DisplayMode): void {
