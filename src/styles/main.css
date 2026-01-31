@@ -412,6 +412,10 @@ body.mode-portrait * {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
+body.mode-standard .reader-backdrop {
+  display: none;
+}
+
 .reader {
   display: flex;
   align-items: center;
@@ -436,6 +440,11 @@ body.mode-portrait * {
   right: 0;
   height: 3px;
   background: var(--bar);
+}
+
+body.mode-standard .reader-bar {
+  background: rgba(255, 255, 255, 0.75);
+  height: 2px;
 }
 
 .reader-bar-top {
@@ -472,6 +481,11 @@ body.mode-portrait * {
   pointer-events: none;
   margin-top: 12px;
   flex-shrink: 0;
+}
+
+body.mode-standard .controls-stack {
+  margin-top: 20px;
+  pointer-events: auto;
 }
 
 .controls {
@@ -1543,6 +1557,13 @@ body.mode-portrait .controls-cog {
   right: 10px;
 }
 
+body.mode-standard .controls-stack .settings-button {
+  position: relative;
+  top: auto;
+  right: auto;
+  margin-top: 8px;
+}
+
 /* In reel mode, position on top of the reel player content */
 .reels-player-content .settings-button {
   position: absolute;
@@ -1603,6 +1624,27 @@ body.mode-portrait {
   top: 64px;
   /* Below the button */
   right: 10px;
+}
+
+body.mode-standard .controls-stack .settings-panel {
+  top: calc(100% + 12px);
+  left: 50%;
+  right: auto;
+  width: min(560px, 92vw);
+  max-width: 92vw;
+  transform: translate(-50%, -10px);
+}
+
+body.mode-standard .controls-stack .settings-panel.open {
+  transform: translate(-50%, 0);
+}
+
+body.mode-standard .controls {
+  display: none;
+}
+
+body.mode-standard .controls-cog {
+  display: none;
 }
 
 .reels-player-content .settings-panel {

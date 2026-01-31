@@ -1,0 +1,26 @@
+substitutions:
+  _REGION: us-central1
+  _SERVICE: fast-read-server
+  _IMAGE: gcr.io/$PROJECT_ID/fast-read-server
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_IMAGE}', '-f', 'server/Dockerfile', 'server']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_IMAGE}']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - '${_SERVICE}'
+      - '--image=${_IMAGE}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+
+images:
+  - '${_IMAGE}'

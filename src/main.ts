@@ -68,10 +68,6 @@ const readerShell = document.createElement('div');
 readerShell.className = 'reader-shell';
 app.append(readerShell);
 
-const readerBackdrop = document.createElement('div');
-readerBackdrop.className = 'reader-backdrop';
-readerShell.append(readerBackdrop);
-
 const readerView = new ReaderView(readerShell);
 const controlsStack = document.createElement('div');
 controlsStack.className = 'controls-stack';
@@ -87,6 +83,7 @@ const settingsButton = new SettingsButton(controlsStack);
 
 // Bind settings button to toggle settings panel
 settingsButton.bind(() => settingsPanel.toggle());
+settingsPanel.open();
 
 // Bind settings panel handlers
 settingsPanel.bind({
@@ -116,6 +113,12 @@ settingsPanel.bind({
       if (!reelState.docId || !reelState.activeReelId) {
         showEmptyReel();
       }
+      settingsPanel.close();
+    } else {
+      const nextFrames = groupTokens(tokenize(activeText), currentChunkSize);
+      reader.setFrames(nextFrames, { preservePosition: false });
+      readerView.setFrame(nextFrames[0] ?? null);
+      settingsPanel.open();
     }
 
     // Move background element for clipping
@@ -200,7 +203,7 @@ let activeStyle: string = 'calming';
 let manualBackgroundId: string | null = null;
 
 const reader = new Reader({
-  frames: [],
+  frames,
   wpm: DEFAULT_WPM,
   onFrame: (frame) => {
     readerView.setFrame(frame);
@@ -217,6 +220,9 @@ const reader = new Reader({
     controls.setFocusMode(state.isPlaying);
   }
 });
+
+reader.setFrames(frames, { preservePosition: false });
+readerView.setFrame(frames[0] ?? null);
 
 void runIntroSequence();
 
@@ -308,6 +314,10 @@ function updateChunkSize(size: number): void {
     if (reel) {
       const reelFrames = buildReelFrames(reel, size);
       reader.setFrames(reelFrames, { preservePosition: true });
+    } else {
+      const nextFrames = groupTokens(tokenize(activeText), currentChunkSize);
+      reader.setFrames(nextFrames, { preservePosition: false });
+      readerView.setFrame(nextFrames[0] ?? null);
     }
   } else {
     // Re-chunk active text (Standard Mode)

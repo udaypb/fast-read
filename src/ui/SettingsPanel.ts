@@ -387,6 +387,18 @@ export class SettingsPanel {
         this.updatePanelState();
     }
 
+    public open(): void {
+        if (this.isOpen) return;
+        this.isOpen = true;
+        this.updatePanelState();
+    }
+
+    public close(): void {
+        if (!this.isOpen) return;
+        this.isOpen = false;
+        this.updatePanelState();
+    }
+
     private updatePanelState(): void {
         const parent = this.root.parentElement;
         if (this.isOpen) {
