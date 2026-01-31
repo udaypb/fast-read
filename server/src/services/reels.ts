@@ -1,4 +1,4 @@
-import type { DocRecord, Reel } from '../types.js';
+import type { CharacterLine, CharacterSide, DocRecord, Reel } from '../types.js';
 import type { LlmClient } from '../llm/types.js';
 import type { BackgroundSpec } from './backgrounds.js';
 import { getBackgroundCatalog, getBackgroundCatalogSummary } from './backgrounds.js';
@@ -263,10 +263,10 @@ export async function buildReels(options: {
             const background = selectBackground(analysis, backgroundCatalog, i);
 
             const baseScript = condensed.script?.length ? condensed.script : buildFallbackScript(reelText);
-            const characterScript = baseScript.map((line) => ({
+            const characterScript: CharacterLine[] = baseScript.map((line) => ({
               characterId: line.characterId,
               text: line.text,
-              side: line.characterId === 'character2' ? 'right' : 'left'
+              side: (line.characterId === 'character2' ? 'right' : 'left') as CharacterSide
             }));
 
             const reel: Reel = {
