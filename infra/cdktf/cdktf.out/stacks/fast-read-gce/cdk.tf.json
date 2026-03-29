@@ -1,0 +1,144 @@
+{
+  "//": {
+    "metadata": {
+      "backend": "local",
+      "stackName": "fast-read-gce",
+      "version": "0.21.0"
+    },
+    "outputs": {
+      "fast-read-gce": {
+        "publicIps": "publicIps"
+      }
+    }
+  },
+  "output": {
+    "publicIps": {
+      "value": [
+        "${google_compute_address.fastReadIp-1.address}"
+      ]
+    }
+  },
+  "provider": {
+    "google": [
+      {
+        "project": "readfast-live-jan2026",
+        "region": "us-central1",
+        "zone": "us-central1-a"
+      }
+    ]
+  },
+  "resource": {
+    "google_compute_address": {
+      "fastReadIp-1": {
+        "//": {
+          "metadata": {
+            "path": "fast-read-gce/fastReadIp-1",
+            "uniqueId": "fastReadIp-1"
+          }
+        },
+        "name": "fast-read-ip-1",
+        "region": "us-central1"
+      }
+    },
+    "google_compute_firewall": {
+      "allowSsh": {
+        "//": {
+          "metadata": {
+            "path": "fast-read-gce/allowSsh",
+            "uniqueId": "allowSsh"
+          }
+        },
+        "allow": [
+          {
+            "ports": [
+              "22"
+            ],
+            "protocol": "tcp"
+          }
+        ],
+        "direction": "INGRESS",
+        "name": "fast-read-allow-ssh",
+        "network": "${google_compute_network.fastReadNetwork.id}",
+        "source_ranges": [
+          "174.127.238.57/32"
+        ]
+      }
+    },
+    "google_compute_instance": {
+      "fastReadVm-1": {
+        "//": {
+          "metadata": {
+            "path": "fast-read-gce/fastReadVm-1",
+            "uniqueId": "fastReadVm-1"
+          }
+        },
+        "boot_disk": {
+          "initialize_params": {
+            "image": "debian-cloud/debian-12",
+            "size": 20,
+            "type": "pd-balanced"
+          }
+        },
+        "machine_type": "e2-medium",
+        "metadata": {
+          "block-project-ssh-keys": "true"
+        },
+        "name": "fast-read-vm-1",
+        "network_interface": [
+          {
+            "access_config": [
+              {
+                "nat_ip": "${google_compute_address.fastReadIp-1.address}"
+              }
+            ],
+            "network": "${google_compute_network.fastReadNetwork.id}",
+            "subnetwork": "${google_compute_subnetwork.fastReadSubnet.id}"
+          }
+        ],
+        "tags": [
+          "fast-read-ssh"
+        ],
+        "zone": "us-central1-a"
+      }
+    },
+    "google_compute_network": {
+      "fastReadNetwork": {
+        "//": {
+          "metadata": {
+            "path": "fast-read-gce/fastReadNetwork",
+            "uniqueId": "fastReadNetwork"
+          }
+        },
+        "auto_create_subnetworks": false,
+        "name": "fast-read-network"
+      }
+    },
+    "google_compute_subnetwork": {
+      "fastReadSubnet": {
+        "//": {
+          "metadata": {
+            "path": "fast-read-gce/fastReadSubnet",
+            "uniqueId": "fastReadSubnet"
+          }
+        },
+        "ip_cidr_range": "10.10.0.0/24",
+        "name": "fast-read-subnet",
+        "network": "${google_compute_network.fastReadNetwork.id}",
+        "region": "us-central1"
+      }
+    }
+  },
+  "terraform": {
+    "backend": {
+      "local": {
+        "path": "/Users/udaypb/Documents/fast-read/infra/cdktf/terraform.fast-read-gce.tfstate"
+      }
+    },
+    "required_providers": {
+      "google": {
+        "source": "google",
+        "version": "6.50.0"
+      }
+    }
+  }
+}

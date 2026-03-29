@@ -1,0 +1,13 @@
+{
+  "language": "typescript",
+  "app": "npx ts-node src/main.ts",
+  "projectId": "fast-read-cdktf",
+  "sendCrashReports": false,
+  "terraformProviders": [
+    "hashicorp/google@~> 5.25"
+  ],
+  "codeMakerOutput": "imports",
+  "context": {
+    "excludeStackIdFromLogicalIds": "true"
+  }
+}

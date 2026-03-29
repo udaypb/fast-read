@@ -33,9 +33,16 @@ export class ReelsPlayer {
     private activeReelId: string | null = null;
     private observer: IntersectionObserver;
     private onActiveReelChange?: (reelId: string) => void;
+    private onChunkSizeChange?: (size: number) => void;
     private manualBackgroundId: string | null = null;
     private isInternalScroll = false;
     private _isDragging = false;
+    private chunkSize = 2;
+    private chunkControls: HTMLElement;
+    private chunkValueEl: HTMLElement;
+    private decrementChunkBtn: HTMLButtonElement;
+    private incrementChunkBtn: HTMLButtonElement;
+    private compactPlayBtn: HTMLButtonElement;
 
     constructor(container: HTMLElement) {
         this.root = document.createElement('div');
@@ -101,10 +108,59 @@ export class ReelsPlayer {
         this.playPauseIndicator = document.createElement('div');
         this.playPauseIndicator.className = 'reels-center-indicator';
 
+        this.chunkControls = document.createElement('div');
+        this.chunkControls.className = 'reels-chunk-controls';
+
+        const topRow = document.createElement('div');
+        topRow.className = 'reels-chunk-row';
+        this.decrementChunkBtn = document.createElement('button');
+        this.decrementChunkBtn.type = 'button';
+        this.decrementChunkBtn.className = 'reels-chunk-btn';
+        this.decrementChunkBtn.textContent = '−';
+        this.chunkValueEl = document.createElement('div');
+        this.chunkValueEl.className = 'reels-chunk-value';
+        this.chunkValueEl.textContent = `${this.chunkSize} words/frame`;
+        this.incrementChunkBtn = document.createElement('button');
+        this.incrementChunkBtn.type = 'button';
+        this.incrementChunkBtn.className = 'reels-chunk-btn';
+        this.incrementChunkBtn.textContent = '+';
+        topRow.append(this.decrementChunkBtn, this.chunkValueEl, this.incrementChunkBtn);
+
+        this.compactPlayBtn = document.createElement('button');
+        this.compactPlayBtn.type = 'button';
+        this.compactPlayBtn.className = 'reels-compact-play-btn';
+        this.compactPlayBtn.innerHTML = '<span>⏸</span>';
+        this.compactPlayBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.onPlayPause?.();
+        });
+
+        this.chunkControls.append(topRow);
+
+        this.decrementChunkBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const next = Math.max(1, this.chunkSize - 1);
+            if (next === this.chunkSize) return;
+            this.setChunkSize(next);
+            this.onChunkSizeChange?.(next);
+        });
+
+        this.incrementChunkBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const next = Math.min(4, this.chunkSize + 1);
+            if (next === this.chunkSize) return;
+            this.setChunkSize(next);
+            this.onChunkSizeChange?.(next);
+        });
+
+        this.setChunkSize(this.chunkSize);
+
         this.contentEl.append(
             this.progressContainer,
             this.frameCounter,
-            this.playPauseIndicator
+            this.playPauseIndicator,
+            this.chunkControls,
+            this.compactPlayBtn
         );
 
         this.initInteraction(this.pager);
@@ -171,12 +227,14 @@ export class ReelsPlayer {
     showEmptyState(show: boolean): void {
         this.isEmptyState = show;
 
+        const emptyStateMessage = 'Nothing to show — paste text or upload a PDF to start reading.';
+
         if (show && this.screens.size === 0) {
             // Create a temporary empty screen so we can show the "No reels" message and background
             const emptyReel = {
                 reelId: 'empty',
                 title: 'Empty',
-                text: 'No reels to show — import a PDF or text to start scrolling!',
+                text: emptyStateMessage,
                 index: 0,
                 wordCount: 0,
                 estDurationSec: 0,
@@ -187,7 +245,7 @@ export class ReelsPlayer {
             const screen = this.screens.get('empty');
             if (screen) {
                 screen.activate('intro');
-                screen.setTextContent('No reels to show — import a PDF or text to start scrolling!');
+                screen.setTextContent(emptyStateMessage);
                 screen.addTextClass('reels-player-text--empty');
             }
             return;
@@ -197,7 +255,7 @@ export class ReelsPlayer {
 
         if (show) {
             if (activeScreen) {
-                activeScreen.setTextContent('No reels to show — import a PDF or text to start scrolling!');
+                activeScreen.setTextContent(emptyStateMessage);
                 activeScreen.addTextClass('reels-player-text--empty');
             }
             this.playPauseBtn.style.display = 'none';
@@ -281,6 +339,7 @@ export class ReelsPlayer {
 
     setPlaying(playing: boolean): void {
         this.playPauseBtn.innerHTML = playing ? '<span>⏸</span>' : '<span>▶</span>';
+        this.compactPlayBtn.innerHTML = playing ? '<span>⏸</span>' : '<span>▶</span>';
     }
 
     public showPlayPauseIndicator(playing: boolean): void {
@@ -418,11 +477,24 @@ export class ReelsPlayer {
     bind(handler: {
         onPlayPause?: () => void;
         onSeek?: (delta: number) => void;
+        onChunkSizeChange?: (size: number) => void;
         onActiveReelChange?: (reelId: string) => void;
     }): void {
         this.onPlayPause = handler.onPlayPause;
         this.onSeek = handler.onSeek;
+        this.onChunkSizeChange = handler.onChunkSizeChange;
         this.onActiveReelChange = handler.onActiveReelChange;
+    }
+
+    setChunkSize(size: number): void {
+        this.chunkSize = Math.max(1, Math.min(4, size));
+        const label = this.chunkSize === 1 ? '1 word/frame' : `${this.chunkSize} words/frame`;
+        this.chunkValueEl.textContent = label;
+
+        const atMin = this.chunkSize <= 1;
+        const atMax = this.chunkSize >= 4;
+        this.decrementChunkBtn.disabled = atMin;
+        this.incrementChunkBtn.disabled = atMax;
     }
 
     async playTransition(direction: 'next' | 'prev', updateState: () => void | Promise<void>): Promise<void> {
@@ -433,6 +505,7 @@ export class ReelsPlayer {
 
 class ReelScreen {
     private root: HTMLElement;
+    private textWindow: HTMLElement;
     private textEl: HTMLElement;
     private characterOverlay: HTMLElement;
     private characterImage: HTMLImageElement;
@@ -452,9 +525,20 @@ class ReelScreen {
 
         this.background = new Background(this.backgroundContainer);
 
+        this.textWindow = document.createElement('div');
+        this.textWindow.className = 'reels-player-reader-window';
+
+        const topBar = document.createElement('div');
+        topBar.className = 'reels-player-bar reels-player-bar-top';
+
+        const bottomBar = document.createElement('div');
+        bottomBar.className = 'reels-player-bar reels-player-bar-bottom';
+
         this.textEl = document.createElement('div');
         this.textEl.className = 'reels-player-text';
         this.textEl.textContent = ''; // Will be updated by reader
+
+        this.textWindow.append(topBar, this.textEl, bottomBar);
 
         this.characterOverlay = document.createElement('div');
         this.characterOverlay.className = 'reel-character-overlay';
@@ -467,7 +551,7 @@ class ReelScreen {
 
         this.refreshCharacterAssets();
 
-        this.root.append(this.backgroundContainer, this.characterOverlay, this.textEl);
+        this.root.append(this.backgroundContainer, this.characterOverlay, this.textWindow);
     }
 
     getElement(): HTMLElement {
@@ -498,14 +582,6 @@ class ReelScreen {
         this.textEl.textContent = frame.text;
 
         this.updateCharacterFromFrame(frame);
-
-        this.textEl.animate(
-            [
-                { opacity: 0.6, transform: 'scale(0.95)' },
-                { opacity: 1, transform: 'scale(1)' }
-            ],
-            { duration: 100, easing: 'ease-out' }
-        );
     }
 
     setTextContent(text: string): void {

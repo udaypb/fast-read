@@ -1,0 +1,16 @@
+{
+  "stacks": {
+    "fast-read-gce": {
+      "annotations": [
+      ],
+      "constructPath": "fast-read-gce",
+      "dependencies": [
+      ],
+      "name": "fast-read-gce",
+      "stackMetadataPath": "stacks/fast-read-gce/metadata.json",
+      "synthesizedStackPath": "stacks/fast-read-gce/cdk.tf.json",
+      "workingDirectory": "stacks/fast-read-gce"
+    }
+  },
+  "version": "0.21.0"
+}

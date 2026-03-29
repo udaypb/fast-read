@@ -160,7 +160,7 @@ export class SettingsPanel {
         this.chunkInput.type = 'range';
         this.chunkInput.className = 'settings-range-input';
         this.chunkInput.min = '1';
-        this.chunkInput.max = '6'; // Allow up to 6 words
+        this.chunkInput.max = '4';
         this.chunkInput.step = '1';
         this.chunkInput.value = String(initialChunkSize);
         this.chunkInput.addEventListener('input', () => {

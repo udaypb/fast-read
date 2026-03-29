@@ -1,14 +1,7 @@
 import type { Frame, ReaderState } from './types';
 
-const DEFAULT_PUNCTUATION_DELAY = 0;
 const MIN_WPM = 150;
 const MAX_WPM = 700;
-
-function punctuationDelay(text: string): number {
-  if (/[.!?]$/.test(text)) return 250;
-  if (/[,;:]$/.test(text)) return 150;
-  return DEFAULT_PUNCTUATION_DELAY;
-}
 
 export type ReaderOptions = {
   frames: Frame[];
@@ -160,11 +153,7 @@ export class Reader {
 
   private getFrameDuration(frame: Frame): number {
     const baseMs = (60_000 / this.state.wpm) * frame.tokens.length;
-    const extra = frame.tokens.reduce((maxDelay, token) => {
-      return Math.max(maxDelay, punctuationDelay(token.text));
-    }, 0);
-
-    return baseMs + extra;
+    return baseMs;
   }
 
   private notifyState(): void {

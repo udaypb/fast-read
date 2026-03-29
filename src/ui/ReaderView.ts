@@ -27,12 +27,5 @@ export class ReaderView {
 
   setFrame(frame: Frame | null): void {
     this.textEl.textContent = frame ? frame.text : '';
-    this.textEl.animate(
-      [
-        { opacity: 0.4, transform: 'translateY(4px)' },
-        { opacity: 1, transform: 'translateY(0)' }
-      ],
-      { duration: 160, easing: 'ease-out' }
-    );
   }
 }

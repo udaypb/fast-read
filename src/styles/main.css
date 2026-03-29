@@ -323,7 +323,8 @@ body.mode-portrait * {
 .intro-active .controls-stack,
 .intro-active .reel-rail,
 .intro-active .import-root,
-.intro-active .reader-backdrop {
+.intro-active .reader-backdrop,
+.intro-active .reader-shell {
   opacity: 0;
   pointer-events: none;
 }
@@ -1355,6 +1356,127 @@ body.mode-standard .controls-stack {
   box-sizing: border-box;
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+.reels-player-reader-window {
+  position: relative;
+  width: min(92%, 900px);
+  min-height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.reels-chunk-controls {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 88px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 130;
+  pointer-events: auto;
+}
+
+.reels-chunk-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reels-chunk-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reels-chunk-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.reels-chunk-btn:disabled {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.reels-chunk-btn:disabled:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.reels-chunk-value {
+  min-width: 110px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.reels-compact-play-btn {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 150px);
+  transform: translateX(-50%);
+  width: 36px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(10, 10, 10, 0.72);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 130;
+  opacity: 1;
+  visibility: visible;
+  -webkit-appearance: none;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.reels-compact-play-btn:hover {
+  background: rgba(249, 226, 176, 0.95);
+  color: #121212;
+  border-color: rgba(249, 226, 176, 0.95);
+  transform: translateX(-50%) scale(1.03);
+}
+
+.reels-player-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.reels-player-bar-top {
+  top: 20px;
+}
+
+.reels-player-bar-bottom {
+  bottom: 20px;
 }
 
 .reel-character-overlay {

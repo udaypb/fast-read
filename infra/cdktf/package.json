@@ -1,0 +1,25 @@
+{
+  "name": "cdktf",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "synth": "cdktf synth",
+    "deploy": "cdktf deploy",
+    "destroy": "cdktf destroy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@cdktf/provider-google": "^16.12.1",
+    "cdktf": "^0.21.0",
+    "constructs": "^10.4.5"
+  },
+  "devDependencies": {
+    "cdktf-cli": "^0.21.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
