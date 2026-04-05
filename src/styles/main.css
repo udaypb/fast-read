@@ -1463,6 +1463,47 @@ body.mode-standard .controls-stack {
   transform: translateX(-50%) scale(1.03);
 }
 
+.reels-empty-action {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  border: 1px solid rgba(249, 226, 176, 0.6);
+  border-radius: 999px;
+  background: rgba(12, 12, 12, 0.78);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  cursor: pointer;
+  z-index: 131;
+}
+
+.reels-empty-action:hover {
+  background: rgba(249, 226, 176, 0.18);
+}
+
+/* Keep reel controls below reading text on small iPhone-sized screens */
+@media (max-width: 430px), (max-height: 760px) {
+  .reels-chunk-controls {
+    top: auto;
+    bottom: calc(112px + env(safe-area-inset-bottom));
+  }
+
+  .reels-compact-play-btn {
+    top: auto;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .reels-empty-action {
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    font-size: 0.68rem;
+    padding: 7px 12px;
+  }
+}
+
 .reels-player-bar {
   position: absolute;
   left: 0;

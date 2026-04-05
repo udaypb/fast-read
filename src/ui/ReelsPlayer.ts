@@ -43,6 +43,8 @@ export class ReelsPlayer {
     private decrementChunkBtn: HTMLButtonElement;
     private incrementChunkBtn: HTMLButtonElement;
     private compactPlayBtn: HTMLButtonElement;
+    private emptyActionBtn: HTMLButtonElement;
+    private onPlayDemo?: () => void;
 
     constructor(container: HTMLElement) {
         this.root = document.createElement('div');
@@ -135,6 +137,16 @@ export class ReelsPlayer {
             this.onPlayPause?.();
         });
 
+        this.emptyActionBtn = document.createElement('button');
+        this.emptyActionBtn.type = 'button';
+        this.emptyActionBtn.className = 'reels-empty-action';
+        this.emptyActionBtn.textContent = 'Play demo';
+        this.emptyActionBtn.style.display = 'none';
+        this.emptyActionBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.onPlayDemo?.();
+        });
+
         this.chunkControls.append(topRow);
 
         this.decrementChunkBtn.addEventListener('click', (event) => {
@@ -160,7 +172,8 @@ export class ReelsPlayer {
             this.frameCounter,
             this.playPauseIndicator,
             this.chunkControls,
-            this.compactPlayBtn
+            this.compactPlayBtn,
+            this.emptyActionBtn
         );
 
         this.initInteraction(this.pager);
@@ -224,10 +237,31 @@ export class ReelsPlayer {
         }
     }
     // ... (keep existing methods up to playTransition)
-    showEmptyState(show: boolean): void {
+    showEmptyState(show: boolean, options?: { message?: string; showDemoButton?: boolean }): void {
         this.isEmptyState = show;
 
-        const emptyStateMessage = 'Nothing to show — paste text or upload a PDF to start reading.';
+        const emptyStateMessage = options?.message ?? 'No reels yet — paste text or upload a PDF to get started.';
+        this.emptyActionBtn.style.display = show && options?.showDemoButton ? 'inline-flex' : 'none';
+
+        if (show) {
+            // Ensure an empty screen always exists so we never land on a blank black view.
+            // This guards against edge cases where screens exist but no active screen is set.
+            const activeScreen = this.activeReelId ? this.screens.get(this.activeReelId) : null;
+            if (!activeScreen) {
+                this.clearReels();
+                const emptyReel = {
+                    reelId: 'empty',
+                    title: 'Empty',
+                    text: emptyStateMessage,
+                    index: 0,
+                    wordCount: 0,
+                    estDurationSec: 0,
+                    backgroundId: 'intro'
+                } as any;
+                this.addReel(emptyReel);
+                this.activeReelId = 'empty';
+            }
+        }
 
         if (show && this.screens.size === 0) {
             // Create a temporary empty screen so we can show the "No reels" message and background
@@ -265,6 +299,7 @@ export class ReelsPlayer {
                 // The actual text will be set by setFrame
             }
             this.playPauseBtn.style.display = 'flex';
+            this.emptyActionBtn.style.display = 'none';
         }
     }
 
@@ -479,11 +514,13 @@ export class ReelsPlayer {
         onSeek?: (delta: number) => void;
         onChunkSizeChange?: (size: number) => void;
         onActiveReelChange?: (reelId: string) => void;
+        onPlayDemo?: () => void;
     }): void {
         this.onPlayPause = handler.onPlayPause;
         this.onSeek = handler.onSeek;
         this.onChunkSizeChange = handler.onChunkSizeChange;
         this.onActiveReelChange = handler.onActiveReelChange;
+        this.onPlayDemo = handler.onPlayDemo;
     }
 
     setChunkSize(size: number): void {

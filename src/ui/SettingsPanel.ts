@@ -177,24 +177,6 @@ export class SettingsPanel {
 
         this.contentWrapper.appendChild(controlsSection);
 
-        // Mode selector section
-        const modeSection = document.createElement('div');
-        modeSection.className = 'settings-section';
-
-        const modeHeader = document.createElement('div');
-        modeHeader.className = 'settings-section-header';
-        modeHeader.textContent = 'Display Mode';
-        modeSection.appendChild(modeHeader);
-
-        const modeButtons = document.createElement('div');
-        modeButtons.className = 'settings-mode-buttons';
-
-        this.createModeButton(DisplayMode.Standard, '<div class="mode-icon-wide">16:9</div>', 'Standard style', modeButtons);
-        this.createModeButton(DisplayMode.Portrait, '<div class="mode-icon-tall">9:16</div>', 'Reel style', modeButtons);
-
-        modeSection.appendChild(modeButtons);
-        this.contentWrapper.appendChild(modeSection);
-
         // Background styles section
         const styleSection = document.createElement('div');
         styleSection.className = 'settings-section';
@@ -215,6 +197,25 @@ export class SettingsPanel {
         styleSection.appendChild(this.previewsContainer);
 
         this.contentWrapper.appendChild(styleSection);
+
+        // Mode selector section
+        const modeSection = document.createElement('div');
+        modeSection.className = 'settings-section';
+
+        const modeHeader = document.createElement('div');
+        modeHeader.className = 'settings-section-header';
+        modeHeader.textContent = 'Display Mode';
+        modeSection.appendChild(modeHeader);
+
+        const modeButtons = document.createElement('div');
+        modeButtons.className = 'settings-mode-buttons';
+
+        this.createModeButton(DisplayMode.Standard, '<div class="mode-icon-wide">16:9</div>', 'Standard style', modeButtons);
+        this.createModeButton(DisplayMode.Portrait, '<div class="mode-icon-tall">9:16</div>', 'Reel style', modeButtons);
+
+        modeSection.appendChild(modeButtons);
+        this.contentWrapper.appendChild(modeSection);
+
         this.root.appendChild(this.contentWrapper);
         container.appendChild(this.root);
     }

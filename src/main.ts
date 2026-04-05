@@ -11,7 +11,6 @@ import { extractTextFromPdf } from './processing/pdfExtract';
 import { createLocalRenderModel } from './processing/renderModel';
 import {
   getLatestSession,
-  hasVisitedApp,
   markVisitedApp,
   saveOrUpdateSession,
   updateSessionActiveReel,
@@ -66,6 +65,7 @@ function applyBackgroundAndTone(styleId: string, options?: { allowManualTone?: b
 
 let activeText = SAMPLE_TEXT;
 let currentChunkSize = DEFAULT_CHUNK_SIZE;
+let hasUserProvidedTextThisSession = false;
 
 const tokens = tokenize(SAMPLE_TEXT);
 const frames = groupTokens(tokens, DEFAULT_CHUNK_SIZE);
@@ -184,7 +184,7 @@ settingsPanel.bind({
     }
   },
   onPlayPause: () => {
-    reader.toggle();
+    togglePlaybackFromStartIfEnded();
     if (document.body.classList.contains('mode-portrait')) {
       reelsPlayer.showPlayPauseIndicator(reader.getState().isPlaying);
     }
@@ -202,7 +202,7 @@ settingsPanel.bind({
 
 reelsPlayer.bind({
   onPlayPause: () => {
-    reader.toggle();
+    togglePlaybackFromStartIfEnded();
     reelsPlayer.showPlayPauseIndicator(reader.getState().isPlaying);
   },
   onSeek: (delta) => reader.seek(delta),
@@ -213,6 +213,9 @@ reelsPlayer.bind({
     if (reel) {
       selectReel(reel, true, false); // autoplay true, scroll false
     }
+  },
+  onPlayDemo: () => {
+    void ingestLocalText(SAMPLE_TEXT);
   }
 });
 
@@ -242,23 +245,19 @@ reader.setFrames(frames, { preservePosition: false });
 readerView.setFrame(frames[0] ?? null);
 
 const latestSession = getLatestSession();
-if (hasVisitedApp()) {
-  void bootWithoutIntro(latestSession);
-} else {
-  void runIntroSequence();
-}
+void runIntroSequence(latestSession);
 
-async function bootWithoutIntro(session: StoredReelSession | null): Promise<void> {
-  markVisitedApp();
-  app!.classList.add('ui-entrance');
-  activatePortraitMode();
+function togglePlaybackFromStartIfEnded(): void {
+  const state = reader.getState();
+  const isAtEnd = state.totalFrames > 0 && state.currentIndex >= state.totalFrames - 1;
 
-  if (session) {
-    restoreSession(session);
+  if (!state.isPlaying && isAtEnd) {
+    reader.seek(-state.currentIndex);
+    reader.play();
     return;
   }
 
-  showEmptyReel();
+  reader.toggle();
 }
 
 function activatePortraitMode(): void {
@@ -317,7 +316,7 @@ function restoreSession(session: StoredReelSession): void {
   }
 }
 
-async function runIntroSequence() {
+async function runIntroSequence(session: StoredReelSession | null) {
   markVisitedApp();
   document.body.classList.add('intro-active');
   applyBackgroundAndTone('intro');
@@ -359,12 +358,18 @@ async function runIntroSequence() {
 
   activatePortraitMode();
 
-  // Show empty state since we are just starting
+  // Preserve original intro on every reload, then route to content if available.
+  if (session && Array.isArray(session.reels) && session.reels.length > 0) {
+    restoreSession(session);
+    return;
+  }
+
+  // New-user landing (also for returning users with no saved reels)
   showEmptyReel();
 }
 
 controls.bind({
-  onPlayPause: () => reader.toggle(),
+  onPlayPause: () => togglePlaybackFromStartIfEnded(),
   onRestart: () => {
     reader.pause();
     reader.seek(-reader.getState().currentIndex);
@@ -440,9 +445,11 @@ reelRail.bind({
 
 importDialog.bind({
   onImportText: (text) => {
+    hasUserProvidedTextThisSession = true;
     void ingestLocalText(text);
   },
   onImportFile: (file) => {
+    hasUserProvidedTextThisSession = true;
     void ingestLocalFile(file);
   }
 });
@@ -606,7 +613,10 @@ async function navigateToPreviousReel(): Promise<void> {
 }
 
 function showEmptyReel(): void {
-  reelsPlayer.showEmptyState(true);
+  reelsPlayer.showEmptyState(true, {
+    message: 'No reels yet — upload a PDF, paste text, or try a quick demo.',
+    showDemoButton: !hasUserProvidedTextThisSession
+  });
   settingsPanel.setReels([]);
   applyBackgroundAndTone(manualBackgroundId || 'intro');
   reader.pause();
@@ -623,7 +633,7 @@ window.addEventListener('keydown', (event) => {
   switch (event.key) {
     case ' ':
       event.preventDefault();
-      reader.toggle();
+      togglePlaybackFromStartIfEnded();
       break;
     case 'ArrowLeft':
       event.preventDefault();
