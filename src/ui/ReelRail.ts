@@ -3,6 +3,7 @@ import type { Reel } from '../api/types';
 export type ReelRailHandlers = {
   onSelect: (reel: Reel) => void;
   onRequestPage: (direction: 'next' | 'prev') => void;
+  onUploadChange?: (uploadId: string) => void;
 };
 
 export class ReelRail {
@@ -16,20 +17,16 @@ export class ReelRail {
   private scrollTimeout: number | null = null;
   private fadeLeft: HTMLElement;
   private fadeRight: HTMLElement;
-  private selector: HTMLSelectElement;
   private currentUploadId: string | null = null;
   private uploadMap = new Map<string, Reel[]>();
+  private uploadOrder: string[] = [];
+  private uploadLabels = new Map<string, string>();
+  private cookingUploadId: string | null = null;
+  private statusMessage = 'Upload a document...';
 
   constructor(container: HTMLElement) {
     this.root = document.createElement('div');
     this.root.className = 'reel-rail';
-
-    this.selector = document.createElement('select');
-    this.selector.className = 'reel-rail-selector';
-    this.selector.style.display = 'none';
-    this.selector.addEventListener('change', () => {
-      this.switchUpload(this.selector.value);
-    });
 
     this.frame = document.createElement('div');
     this.frame.className = 'reel-rail-frame';
@@ -62,55 +59,82 @@ export class ReelRail {
 
     this.track.append(this.status);
     this.frame.append(lineTop, lineBottom, this.track, this.fadeLeft, this.fadeRight);
-    this.root.append(this.selector, this.frame);
+    this.root.append(this.frame);
     container.append(this.root);
 
     this.track.addEventListener('scroll', () => this.handleScroll());
   }
 
-  addUpload(uploadId: string, label: string): void {
-    const exists = Array.from(this.selector.options).some(o => o.value === uploadId);
-    if (exists) return;
-
-    const option = document.createElement('option');
-    option.value = uploadId;
-    option.textContent = label;
-    this.selector.append(option);
-    this.selector.style.display = 'block';
-
-    if (!this.currentUploadId) {
-      this.currentUploadId = uploadId;
-      this.selector.value = uploadId;
+  addUpload(uploadId: string, label: string, options?: { select?: boolean }): void {
+    if (!this.uploadOrder.includes(uploadId)) {
+      this.uploadOrder.push(uploadId);
     }
-
+    this.uploadLabels.set(uploadId, label);
     if (!this.uploadMap.has(uploadId)) {
       this.uploadMap.set(uploadId, []);
     }
+
+    if (!this.currentUploadId || options?.select) {
+      this.currentUploadId = uploadId;
+    }
+    this.renderTrack();
   }
 
-  private switchUpload(uploadId: string): void {
-    this.currentUploadId = uploadId;
-    const reels = this.uploadMap.get(uploadId) || [];
-    this.renderTrack(reels);
-  }
-
-  private renderTrack(reels: Reel[]): void {
+  private renderTrack(): void {
     this.track.innerHTML = '';
-    if (reels.length === 0) {
+    let hasVisibleContent = false;
+
+    this.uploadOrder.forEach((uploadId) => {
+      const reels = this.uploadMap.get(uploadId) || [];
+      const isCooking = this.cookingUploadId === uploadId;
+      if (reels.length === 0 && !isCooking) {
+        return;
+      }
+
+      hasVisibleContent = true;
+      const group = document.createElement('section');
+      group.className = 'reel-group';
+      if (this.currentUploadId === uploadId) {
+        group.classList.add('reel-group--active');
+      }
+
+      const label = document.createElement('div');
+      label.className = 'reel-group-label';
+      if (this.currentUploadId === uploadId) {
+        label.classList.add('reel-group-label--active');
+      }
+      label.textContent = this.uploadLabels.get(uploadId) || 'Upload';
+      group.append(label);
+
+      const cards = document.createElement('div');
+      cards.className = 'reel-group-cards';
+      reels.forEach((reel) => this.createCard(reel, uploadId, cards));
+
+      if (isCooking) {
+        cards.append(this.createCookingCard());
+      }
+
+      group.append(cards);
+      this.track.append(group);
+    });
+
+    if (!hasVisibleContent) {
+      this.status.textContent = this.statusMessage;
       this.track.append(this.status);
       return;
     }
-    reels.forEach(r => this.createCard(r));
+
     if (this.activeId) {
       this.setActive(this.activeId);
     }
   }
 
-  private createCard(reel: Reel): void {
+  private createCard(reel: Reel, uploadId: string, parent: HTMLElement): void {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'reel-card';
     card.dataset.reelId = reel.reelId;
+    card.dataset.uploadId = uploadId;
 
     const title = document.createElement('div');
     title.className = 'reel-card-title';
@@ -125,12 +149,62 @@ export class ReelRail {
     meta.textContent = `${formatDuration(reel.estDurationSec)} · ${reel.wordCount} words`;
 
     card.append(title, snippet, meta);
-    card.addEventListener('click', () => this.handlers.onSelect?.(reel));
-    this.track.append(card);
+    card.addEventListener('click', () => {
+      this.currentUploadId = uploadId;
+      this.handlers.onUploadChange?.(uploadId);
+      this.handlers.onSelect?.(reel);
+    });
+    parent.append(card);
+  }
+
+  private createCookingCard(): HTMLElement {
+    const cookingCard = document.createElement('div');
+    cookingCard.className = 'reel-card-cooking';
+
+    const icon = document.createElement('div');
+    icon.className = 'cooking-icon';
+    icon.textContent = '🍳';
+
+    const text = document.createElement('div');
+    text.className = 'cooking-text';
+    text.textContent = 'Cooking up reels...';
+
+    cookingCard.append(icon, text);
+    return cookingCard;
   }
 
   bind(handlers: ReelRailHandlers): void {
     this.handlers = handlers;
+  }
+
+  setUploads(
+    uploads: Array<{ uploadId: string; label: string; reels: Reel[] }>,
+    options?: { currentUploadId?: string; activeReelId?: string | null }
+  ): void {
+    this.uploadMap.clear();
+    this.uploadOrder = [];
+    this.uploadLabels.clear();
+
+    uploads.forEach(({ uploadId, label, reels }) => {
+      this.uploadOrder.push(uploadId);
+      this.uploadLabels.set(uploadId, label);
+      this.uploadMap.set(uploadId, reels);
+    });
+
+    this.currentUploadId =
+      options?.currentUploadId && this.uploadMap.has(options.currentUploadId)
+        ? options.currentUploadId
+        : this.uploadOrder[0] ?? null;
+    this.activeId = options?.activeReelId ?? null;
+    this.renderTrack();
+
+    if (this.activeId) this.setActive(this.activeId);
+  }
+
+  setCurrentUpload(uploadId: string): void {
+    if (!this.uploadMap.has(uploadId)) return;
+    this.currentUploadId = uploadId;
+    this.renderTrack();
   }
 
   setLoading(isLoading: boolean): void {
@@ -139,21 +213,17 @@ export class ReelRail {
   }
 
   setStatus(message: string): void {
-    this.track.innerHTML = '';
-    this.status.textContent = message;
-    this.track.append(this.status);
-    this.frame.append(this.fadeLeft, this.fadeRight);
+    this.statusMessage = message;
+    this.renderTrack();
   }
 
   setReels(reels: Reel[], options?: { activeReelId?: string; align?: 'start' | 'end'; uploadId?: string }): void {
     const uploadId = options?.uploadId || this.currentUploadId;
     if (uploadId) {
       this.uploadMap.set(uploadId, reels);
-      if (uploadId === this.currentUploadId) {
-        this.renderTrack(reels);
-      }
+      this.renderTrack();
     } else {
-      this.renderTrack(reels);
+      this.renderTrack();
     }
 
     if (options?.activeReelId) {
@@ -169,30 +239,11 @@ export class ReelRail {
     }
   }
 
-  private cookingCard: HTMLElement | null = null;
-
   setCooking(isCooking: boolean): void {
+    this.cookingUploadId = isCooking ? this.currentUploadId : null;
+    this.renderTrack();
     if (isCooking) {
-      if (this.cookingCard) return;
-      if (this.status.parentNode === this.track) {
-        this.track.innerHTML = '';
-      }
-      this.cookingCard = document.createElement('div');
-      this.cookingCard.className = 'reel-card-cooking';
-      const icon = document.createElement('div');
-      icon.className = 'cooking-icon';
-      icon.textContent = '🍳';
-      const text = document.createElement('div');
-      text.className = 'cooking-text';
-      text.textContent = 'Cooking up reels...';
-      this.cookingCard.append(icon, text);
-      this.track.append(this.cookingCard);
-      this.cookingCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-    } else {
-      if (this.cookingCard) {
-        this.cookingCard.remove();
-        this.cookingCard = null;
-      }
+      this.track.scrollLeft = this.track.scrollWidth;
     }
   }
 
@@ -200,16 +251,10 @@ export class ReelRail {
     const id = uploadId || this.currentUploadId;
     if (!id) return;
 
-    let uploadReels = this.uploadMap.get(id) || [];
+    const uploadReels = this.uploadMap.get(id) || [];
     uploadReels.push(reel);
     this.uploadMap.set(id, uploadReels);
-
-    if (id === this.currentUploadId) {
-      if (this.status.parentNode === this.track) {
-        this.track.innerHTML = '';
-      }
-      this.createCard(reel);
-    }
+    this.renderTrack();
   }
 
   setActive(reelId: string): void {

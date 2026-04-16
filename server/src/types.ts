@@ -72,4 +72,6 @@ export type DocRecord = {
   reels: Reel[];
   createdAt: string;
   version: number;
+  state: 'processing' | 'ready' | 'error';
+  error?: string;
 };

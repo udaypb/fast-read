@@ -37,10 +37,19 @@ export function getBackgroundCatalogSummary(): string {
 function loadBackgroundCatalog(): BackgroundSpec[] {
   try {
     const dirname = path.dirname(fileURLToPath(import.meta.url));
-    const filePath = path.resolve(dirname, '../metadata/backgrounds.json');
-    const raw = fs.readFileSync(filePath, 'utf8');
-    const parsed = JSON.parse(raw) as BackgroundSpec[];
-    return Array.isArray(parsed) ? parsed : [];
+    const candidates = [
+      path.resolve(dirname, '../metadata/backgrounds.json'),
+      path.resolve(dirname, '../../src/metadata/backgrounds.json')
+    ];
+
+    for (const filePath of candidates) {
+      if (!fs.existsSync(filePath)) continue;
+      const raw = fs.readFileSync(filePath, 'utf8');
+      const parsed = JSON.parse(raw) as BackgroundSpec[];
+      return Array.isArray(parsed) ? parsed : [];
+    }
+
+    throw new Error('backgrounds.json not found in expected locations.');
   } catch (error) {
     console.warn('Failed to load background metadata.', error);
     return [];

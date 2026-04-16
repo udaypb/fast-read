@@ -33,18 +33,16 @@ export class ReelsPlayer {
     private activeReelId: string | null = null;
     private observer: IntersectionObserver;
     private onActiveReelChange?: (reelId: string) => void;
-    private onChunkSizeChange?: (size: number) => void;
+    private onWpmChange?: (wpm: number) => void;
     private manualBackgroundId: string | null = null;
     private isInternalScroll = false;
     private _isDragging = false;
-    private chunkSize = 2;
+    private wpm = 250;
     private chunkControls: HTMLElement;
     private chunkValueEl: HTMLElement;
     private decrementChunkBtn: HTMLButtonElement;
     private incrementChunkBtn: HTMLButtonElement;
     private compactPlayBtn: HTMLButtonElement;
-    private emptyActionBtn: HTMLButtonElement;
-    private onPlayDemo?: () => void;
 
     constructor(container: HTMLElement) {
         this.root = document.createElement('div');
@@ -121,7 +119,7 @@ export class ReelsPlayer {
         this.decrementChunkBtn.textContent = '−';
         this.chunkValueEl = document.createElement('div');
         this.chunkValueEl.className = 'reels-chunk-value';
-        this.chunkValueEl.textContent = `${this.chunkSize} words/frame`;
+        this.chunkValueEl.textContent = `${this.wpm} WPM`;
         this.incrementChunkBtn = document.createElement('button');
         this.incrementChunkBtn.type = 'button';
         this.incrementChunkBtn.className = 'reels-chunk-btn';
@@ -137,43 +135,32 @@ export class ReelsPlayer {
             this.onPlayPause?.();
         });
 
-        this.emptyActionBtn = document.createElement('button');
-        this.emptyActionBtn.type = 'button';
-        this.emptyActionBtn.className = 'reels-empty-action';
-        this.emptyActionBtn.textContent = 'Play demo';
-        this.emptyActionBtn.style.display = 'none';
-        this.emptyActionBtn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            this.onPlayDemo?.();
-        });
-
         this.chunkControls.append(topRow);
 
         this.decrementChunkBtn.addEventListener('click', (event) => {
             event.stopPropagation();
-            const next = Math.max(1, this.chunkSize - 1);
-            if (next === this.chunkSize) return;
-            this.setChunkSize(next);
-            this.onChunkSizeChange?.(next);
+            const next = Math.max(150, this.wpm - 25);
+            if (next === this.wpm) return;
+            this.setWpm(next);
+            this.onWpmChange?.(next);
         });
 
         this.incrementChunkBtn.addEventListener('click', (event) => {
             event.stopPropagation();
-            const next = Math.min(4, this.chunkSize + 1);
-            if (next === this.chunkSize) return;
-            this.setChunkSize(next);
-            this.onChunkSizeChange?.(next);
+            const next = Math.min(700, this.wpm + 25);
+            if (next === this.wpm) return;
+            this.setWpm(next);
+            this.onWpmChange?.(next);
         });
 
-        this.setChunkSize(this.chunkSize);
+        this.setWpm(this.wpm);
 
         this.contentEl.append(
             this.progressContainer,
             this.frameCounter,
             this.playPauseIndicator,
             this.chunkControls,
-            this.compactPlayBtn,
-            this.emptyActionBtn
+            this.compactPlayBtn
         );
 
         this.initInteraction(this.pager);
@@ -237,11 +224,10 @@ export class ReelsPlayer {
         }
     }
     // ... (keep existing methods up to playTransition)
-    showEmptyState(show: boolean, options?: { message?: string; showDemoButton?: boolean }): void {
+    showEmptyState(show: boolean, options?: { message?: string }): void {
         this.isEmptyState = show;
 
         const emptyStateMessage = options?.message ?? 'No reels yet — paste text or upload a PDF to get started.';
-        this.emptyActionBtn.style.display = show && options?.showDemoButton ? 'inline-flex' : 'none';
 
         if (show) {
             // Ensure an empty screen always exists so we never land on a blank black view.
@@ -299,7 +285,6 @@ export class ReelsPlayer {
                 // The actual text will be set by setFrame
             }
             this.playPauseBtn.style.display = 'flex';
-            this.emptyActionBtn.style.display = 'none';
         }
     }
 
@@ -512,24 +497,21 @@ export class ReelsPlayer {
     bind(handler: {
         onPlayPause?: () => void;
         onSeek?: (delta: number) => void;
-        onChunkSizeChange?: (size: number) => void;
+        onWpmChange?: (wpm: number) => void;
         onActiveReelChange?: (reelId: string) => void;
-        onPlayDemo?: () => void;
     }): void {
         this.onPlayPause = handler.onPlayPause;
         this.onSeek = handler.onSeek;
-        this.onChunkSizeChange = handler.onChunkSizeChange;
+        this.onWpmChange = handler.onWpmChange;
         this.onActiveReelChange = handler.onActiveReelChange;
-        this.onPlayDemo = handler.onPlayDemo;
     }
 
-    setChunkSize(size: number): void {
-        this.chunkSize = Math.max(1, Math.min(4, size));
-        const label = this.chunkSize === 1 ? '1 word/frame' : `${this.chunkSize} words/frame`;
-        this.chunkValueEl.textContent = label;
+    setWpm(wpm: number): void {
+        this.wpm = Math.max(150, Math.min(700, wpm));
+        this.chunkValueEl.textContent = `${this.wpm} WPM`;
 
-        const atMin = this.chunkSize <= 1;
-        const atMax = this.chunkSize >= 4;
+        const atMin = this.wpm <= 150;
+        const atMax = this.wpm >= 700;
         this.decrementChunkBtn.disabled = atMin;
         this.incrementChunkBtn.disabled = atMax;
     }
@@ -543,7 +525,9 @@ export class ReelsPlayer {
 class ReelScreen {
     private root: HTMLElement;
     private textWindow: HTMLElement;
+    private textClipEl: HTMLElement;
     private textEl: HTMLElement;
+    private resizeObserver: ResizeObserver;
     private characterOverlay: HTMLElement;
     private characterImage: HTMLImageElement;
     private backgroundContainer: HTMLElement;
@@ -571,11 +555,15 @@ class ReelScreen {
         const bottomBar = document.createElement('div');
         bottomBar.className = 'reels-player-bar reels-player-bar-bottom';
 
+        this.textClipEl = document.createElement('div');
+        this.textClipEl.className = 'reels-player-text-clip';
+
         this.textEl = document.createElement('div');
         this.textEl.className = 'reels-player-text';
         this.textEl.textContent = ''; // Will be updated by reader
 
-        this.textWindow.append(topBar, this.textEl, bottomBar);
+        this.textClipEl.append(this.textEl);
+        this.textWindow.append(topBar, this.textClipEl, bottomBar);
 
         this.characterOverlay = document.createElement('div');
         this.characterOverlay.className = 'reel-character-overlay';
@@ -589,6 +577,11 @@ class ReelScreen {
         this.refreshCharacterAssets();
 
         this.root.append(this.backgroundContainer, this.characterOverlay, this.textWindow);
+
+        this.resizeObserver = new ResizeObserver(() => {
+            this.fitTextToWindow();
+        });
+        this.resizeObserver.observe(this.textClipEl);
     }
 
     getElement(): HTMLElement {
@@ -616,13 +609,15 @@ class ReelScreen {
             this.clearCharacter();
             return;
         }
-        this.textEl.textContent = frame.text;
+        this.textEl.textContent = frame.tokens.map((token) => token.text).join(' ');
+        this.fitTextToWindow();
 
         this.updateCharacterFromFrame(frame);
     }
 
     setTextContent(text: string): void {
         this.textEl.textContent = text;
+        this.fitTextToWindow();
     }
 
     addTextClass(className: string): void {
@@ -673,5 +668,24 @@ class ReelScreen {
         this.characterOverlay.classList.remove('reel-character-overlay--active');
         this.characterOverlay.dataset.side = '';
         this.characterImage.removeAttribute('src');
+    }
+
+    private fitTextToWindow(): void {
+        this.textEl.style.fontSize = '';
+
+        const availableWidth = this.textClipEl.clientWidth - 8;
+        if (!availableWidth) return;
+
+        const baseSize = Number.parseFloat(window.getComputedStyle(this.textEl).fontSize);
+        if (!Number.isFinite(baseSize) || baseSize <= 0) return;
+
+        let nextSize = baseSize;
+        let renderedWidth = this.textEl.scrollWidth;
+
+        while (renderedWidth > availableWidth && nextSize > 16) {
+            nextSize -= 1;
+            this.textEl.style.fontSize = `${nextSize}px`;
+            renderedWidth = this.textEl.scrollWidth;
+        }
     }
 }

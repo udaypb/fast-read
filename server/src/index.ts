@@ -6,7 +6,6 @@ import multer from 'multer';
 
 import type { DocRecord, DocStatus, ReelPage, Reel } from './types.js';
 import { loadLocalEnv } from './env.js';
-import { createLlmClient } from './llm/factory.js';
 import { buildReels, createDocRecord } from './services/reels.js';
 import { extractTextFromPdf, normalizeText } from './services/text.js';
 
@@ -19,7 +18,6 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 const docs = new Map<string, DocRecord>();
-const llmClient = createLlmClient();
 const eventBus = new EventEmitter();
 
 app.get('/api/health', (_req, res) => {
@@ -53,7 +51,8 @@ app.post('/api/docs', upload.single('file'), async (req, res) => {
       text,
       reels: [],
       createdAt,
-      version
+      version,
+      state: 'processing'
     });
     docs.set(docId, record);
 
@@ -61,7 +60,6 @@ app.post('/api/docs', upload.single('file'), async (req, res) => {
     void buildReels({
       docId,
       text,
-      llm: llmClient,
       createdAt,
       version,
       onReel: (reel) => {
@@ -72,8 +70,20 @@ app.post('/api/docs', upload.single('file'), async (req, res) => {
         eventBus.emit(`reel:${docId}`, reel);
       }
     }).then((reels) => {
-      // Ensure consistency if needed, but streaming updates should cover it
+      const doc = docs.get(docId);
+      if (doc) {
+        doc.state = 'ready';
+        doc.reels = reels;
+      }
       console.log(`Finished processing doc ${docId}, total reels: ${reels.length}`);
+      eventBus.emit(`done:${docId}`);
+    }).catch((error) => {
+      console.error(`Failed processing doc ${docId}`, error);
+      const doc = docs.get(docId);
+      if (doc) {
+        doc.state = 'error';
+        doc.error = 'Failed to build reels.';
+      }
       eventBus.emit(`done:${docId}`);
     });
 
@@ -103,6 +113,12 @@ app.get('/api/docs/:docId/stream', (req, res) => {
     res.write(`data: ${JSON.stringify(reel)}\n\n`);
   }
 
+  if (doc.state === 'ready' || doc.state === 'error') {
+    res.write('event: done\ndata: {}\n\n');
+    res.end();
+    return;
+  }
+
   const onReel = (reel: Reel) => {
     res.write(`data: ${JSON.stringify(reel)}\n\n`);
   };
@@ -130,7 +146,7 @@ app.get('/api/docs/:docId/status', (req, res) => {
   }
 
   const status: DocStatus = {
-    state: 'ready',
+    state: record.state,
     totalReels: record.reels.length,
     processedReels: record.reels.length
   };

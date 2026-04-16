@@ -4,12 +4,7 @@ export type ControlHandlers = {
   onRewind: () => void;
   onForward: () => void;
   onWpmChange: (wpm: number) => void;
-  onChunkSizeChange: (size: number) => void;
 };
-
-function formatWordCount(size: number): string {
-  return size === 1 ? '1 word' : `${size} words`;
-}
 
 function stepRange(input: HTMLInputElement, direction: 'up' | 'down'): void {
   if (direction === 'up') {
@@ -24,14 +19,12 @@ export class Controls {
   private playButton: HTMLButtonElement;
   private wpmInput: HTMLInputElement;
   private wpmValue: HTMLElement;
-  private chunkInput: HTMLInputElement;
-  private chunkValue: HTMLElement;
   private transport: HTMLElement;
   private sliders: HTMLElement;
   private cog: HTMLElement;
   private handlers: Partial<ControlHandlers> = {};
 
-  constructor(container: HTMLElement, initialWpm: number, initialChunkSize: number) {
+  constructor(container: HTMLElement, initialWpm: number) {
     this.root = document.createElement('div');
     this.root.className = 'controls';
 
@@ -93,37 +86,7 @@ export class Controls {
     wpmRow.append(wpmMinus, this.wpmInput, wpmPlus);
     wpmWrap.append(wpmRow, this.wpmValue);
 
-    const chunkWrap = document.createElement('div');
-    chunkWrap.className = 'controls-slider';
-
-    const chunkRow = document.createElement('div');
-    chunkRow.className = 'controls-slider-row';
-
-    const chunkMinus = document.createElement('button');
-    chunkMinus.type = 'button';
-    chunkMinus.className = 'control-button control-step';
-    chunkMinus.textContent = '-';
-
-    this.chunkInput = document.createElement('input');
-    this.chunkInput.type = 'range';
-    this.chunkInput.min = '1';
-    this.chunkInput.max = '4';
-    this.chunkInput.step = '1';
-    this.chunkInput.value = String(initialChunkSize);
-
-    const chunkPlus = document.createElement('button');
-    chunkPlus.type = 'button';
-    chunkPlus.className = 'control-button control-step';
-    chunkPlus.textContent = '+';
-
-    this.chunkValue = document.createElement('div');
-    this.chunkValue.className = 'controls-chunk';
-    this.chunkValue.textContent = formatWordCount(initialChunkSize);
-
-    chunkRow.append(chunkMinus, this.chunkInput, chunkPlus);
-    chunkWrap.append(chunkRow, this.chunkValue);
-
-    this.sliders.append(wpmWrap, chunkWrap);
+    this.sliders.append(wpmWrap);
 
     this.cog = document.createElement('div');
     this.cog.className = 'controls-cog';
@@ -162,18 +125,6 @@ export class Controls {
       stepRange(this.wpmInput, 'up');
       this.updateWpm();
     });
-
-    this.chunkInput.addEventListener('input', () => {
-      this.updateChunkSize();
-    });
-    chunkMinus.addEventListener('click', () => {
-      stepRange(this.chunkInput, 'down');
-      this.updateChunkSize();
-    });
-    chunkPlus.addEventListener('click', () => {
-      stepRange(this.chunkInput, 'up');
-      this.updateChunkSize();
-    });
   }
 
   bind(handlers: ControlHandlers): void {
@@ -187,11 +138,6 @@ export class Controls {
   setWpm(wpm: number): void {
     this.wpmInput.value = String(wpm);
     this.wpmValue.textContent = `${wpm} WPM`;
-  }
-
-  setChunkSize(size: number): void {
-    this.chunkInput.value = String(size);
-    this.chunkValue.textContent = formatWordCount(size);
   }
 
   setFocusMode(enabled: boolean): void {
@@ -220,11 +166,5 @@ export class Controls {
     const wpm = Number(this.wpmInput.value);
     this.wpmValue.textContent = `${wpm} WPM`;
     this.handlers.onWpmChange?.(wpm);
-  }
-
-  private updateChunkSize(): void {
-    const size = Number(this.chunkInput.value);
-    this.chunkValue.textContent = formatWordCount(size);
-    this.handlers.onChunkSizeChange?.(size);
   }
 }

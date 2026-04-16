@@ -9,7 +9,6 @@ export type SettingsPanelHandlers = {
     onRewind?: () => void;
     onForward?: () => void;
     onWpmChange?: (wpm: number) => void;
-    onChunkSizeChange?: (size: number) => void;
     onReelSelect?: (reel: Reel) => void;
 };
 
@@ -19,8 +18,6 @@ export class SettingsPanel {
     private playPauseBtn: HTMLButtonElement;
     private wpmInput?: HTMLInputElement;
     private wpmValue?: HTMLElement;
-    private chunkInput?: HTMLInputElement;
-    private chunkValue?: HTMLElement;
     private isOpen = false;
     private handlers?: SettingsPanelHandlers;
     private activeMode: DisplayMode = DisplayMode.Standard;
@@ -43,7 +40,7 @@ export class SettingsPanel {
         { id: 'real', label: 'Real' }
     ];
 
-    constructor(container: HTMLElement, initialWpm: number, initialChunkSize: number) {
+    constructor(container: HTMLElement, initialWpm: number) {
         this.root = document.createElement('div');
         this.root.className = 'settings-panel';
 
@@ -141,38 +138,7 @@ export class SettingsPanel {
 
         wpmRow.append(wpmHeader, this.wpmInput);
 
-        // Chunk Size Slider
-        const chunkRow = document.createElement('div');
-        chunkRow.className = 'settings-slider-row';
-        const chunkLabel = document.createElement('div');
-        chunkLabel.className = 'settings-slider-label';
-        chunkLabel.textContent = 'Words Per Frame';
-
-        this.chunkValue = document.createElement('div');
-        this.chunkValue.className = 'settings-slider-value';
-        this.chunkValue.textContent = initialChunkSize === 1 ? '1 word' : `${initialChunkSize} words`;
-
-        const chunkHeader = document.createElement('div');
-        chunkHeader.className = 'settings-slider-header';
-        chunkHeader.append(chunkLabel, this.chunkValue);
-
-        this.chunkInput = document.createElement('input');
-        this.chunkInput.type = 'range';
-        this.chunkInput.className = 'settings-range-input';
-        this.chunkInput.min = '1';
-        this.chunkInput.max = '4';
-        this.chunkInput.step = '1';
-        this.chunkInput.value = String(initialChunkSize);
-        this.chunkInput.addEventListener('input', () => {
-            const val = Number(this.chunkInput!.value);
-            const label = val === 1 ? '1 word' : `${val} words`;
-            if (this.chunkValue) this.chunkValue.textContent = label;
-            this.handlers?.onChunkSizeChange?.(val);
-        });
-
-        chunkRow.append(chunkHeader, this.chunkInput);
-
-        slidersContainer.append(wpmRow, chunkRow);
+        slidersContainer.append(wpmRow);
         controlsSection.appendChild(slidersContainer);
 
         this.contentWrapper.appendChild(controlsSection);
@@ -564,15 +530,6 @@ export class SettingsPanel {
         }
         if (this.wpmValue) {
             this.wpmValue.textContent = `${wpm} WPM`;
-        }
-    }
-
-    public setChunkSize(size: number): void {
-        if (this.chunkInput) {
-            this.chunkInput.value = String(size);
-        }
-        if (this.chunkValue) {
-            this.chunkValue.textContent = size === 1 ? '1 word' : `${size} words`;
         }
     }
 
