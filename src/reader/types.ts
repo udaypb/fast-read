@@ -9,6 +9,8 @@ export type Frame = {
   index: number;
   tokens: Token[];
   text: string;
+  startTokenIndex: number;
+  endTokenIndex: number;
   characterId?: string;
   characterSide?: CharacterSide;
   characterAssetUri?: string;

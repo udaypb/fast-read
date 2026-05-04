@@ -2,6 +2,7 @@ import { gsap } from 'gsap';
 import type { Frame } from '../reader/types';
 import type { Reel, CharacterAsset, CharacterLine } from '../api/types';
 import { Background } from './Background';
+import { tokenize } from '../reader/Tokenizer';
 
 export enum DisplayMode {
     Standard = 'standard',
@@ -40,9 +41,12 @@ export class ReelsPlayer {
     private wpm = 250;
     private chunkControls: HTMLElement;
     private chunkValueEl: HTMLElement;
-    private decrementChunkBtn: HTMLButtonElement;
-    private incrementChunkBtn: HTMLButtonElement;
+    private speedInput: HTMLInputElement;
     private compactPlayBtn: HTMLButtonElement;
+    private deleteBtn: HTMLButtonElement;
+    private onDelete?: () => void;
+    private onPreviewExpandChange?: (expanded: boolean) => void;
+    private expandedReelId: string | null = null;
 
     constructor(container: HTMLElement) {
         this.root = document.createElement('div');
@@ -113,18 +117,40 @@ export class ReelsPlayer {
 
         const topRow = document.createElement('div');
         topRow.className = 'reels-chunk-row';
-        this.decrementChunkBtn = document.createElement('button');
-        this.decrementChunkBtn.type = 'button';
-        this.decrementChunkBtn.className = 'reels-chunk-btn';
-        this.decrementChunkBtn.textContent = '−';
+
+        const speedLabel = document.createElement('div');
+        speedLabel.className = 'reels-chunk-label';
+        speedLabel.textContent = 'Speed';
+
         this.chunkValueEl = document.createElement('div');
         this.chunkValueEl.className = 'reels-chunk-value';
         this.chunkValueEl.textContent = `${this.wpm} WPM`;
-        this.incrementChunkBtn = document.createElement('button');
-        this.incrementChunkBtn.type = 'button';
-        this.incrementChunkBtn.className = 'reels-chunk-btn';
-        this.incrementChunkBtn.textContent = '+';
-        topRow.append(this.decrementChunkBtn, this.chunkValueEl, this.incrementChunkBtn);
+        topRow.append(speedLabel, this.chunkValueEl);
+
+        const speedShell = document.createElement('div');
+        speedShell.className = 'slider-shell slider-shell--reels';
+
+        const speedScale = document.createElement('div');
+        speedScale.className = 'slider-scale slider-scale--reels';
+        speedScale.innerHTML = '<span>Min</span><span>Mid</span><span>Max</span>';
+
+        this.speedInput = document.createElement('input');
+        this.speedInput.type = 'range';
+        this.speedInput.className = 'reels-speed-slider';
+        this.speedInput.min = '150';
+        this.speedInput.max = '700';
+        this.speedInput.step = '25';
+        this.speedInput.value = String(this.wpm);
+        this.speedInput.addEventListener('input', (event) => {
+            event.stopPropagation();
+            const next = Number(this.speedInput.value);
+            this.setWpm(next);
+            this.onWpmChange?.(next);
+        });
+
+        const speedRow = document.createElement('div');
+        speedRow.className = 'slider-row slider-row--reels';
+        speedRow.append(this.speedInput);
 
         this.compactPlayBtn = document.createElement('button');
         this.compactPlayBtn.type = 'button';
@@ -135,23 +161,17 @@ export class ReelsPlayer {
             this.onPlayPause?.();
         });
 
-        this.chunkControls.append(topRow);
-
-        this.decrementChunkBtn.addEventListener('click', (event) => {
+        this.deleteBtn = document.createElement('button');
+        this.deleteBtn.type = 'button';
+        this.deleteBtn.className = 'reels-delete-btn reels-delete-btn--hidden';
+        this.deleteBtn.textContent = 'Delete';
+        this.deleteBtn.addEventListener('click', (event) => {
             event.stopPropagation();
-            const next = Math.max(150, this.wpm - 25);
-            if (next === this.wpm) return;
-            this.setWpm(next);
-            this.onWpmChange?.(next);
+            this.onDelete?.();
         });
 
-        this.incrementChunkBtn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const next = Math.min(700, this.wpm + 25);
-            if (next === this.wpm) return;
-            this.setWpm(next);
-            this.onWpmChange?.(next);
-        });
+        speedShell.append(speedScale, speedRow);
+        this.chunkControls.append(topRow, speedShell);
 
         this.setWpm(this.wpm);
 
@@ -159,6 +179,7 @@ export class ReelsPlayer {
             this.progressContainer,
             this.frameCounter,
             this.playPauseIndicator,
+            this.deleteBtn,
             this.chunkControls,
             this.compactPlayBtn
         );
@@ -306,7 +327,9 @@ export class ReelsPlayer {
     public addReel(reel: Reel): void {
         if (this.screens.has(reel.reelId)) return;
 
-        const screen = new ReelScreen(reel);
+        const screen = new ReelScreen(reel, (expanded) => {
+            this.setExpandedPreview(reel.reelId, expanded);
+        });
         this.screens.set(reel.reelId, screen);
         this.pager.appendChild(screen.getElement());
         this.observer.observe(screen.getElement());
@@ -320,6 +343,9 @@ export class ReelsPlayer {
     public scrollToReel(reelId: string): void {
         const screen = this.screens.get(reelId);
         if (screen) {
+            if (this.expandedReelId && this.expandedReelId !== reelId) {
+                this.collapseExpandedPreview();
+            }
             this.isInternalScroll = true;
             this.activeReelId = reelId;
             screen.getElement().scrollIntoView({ behavior: 'smooth' });
@@ -329,6 +355,7 @@ export class ReelsPlayer {
     }
 
     public clearReels(): void {
+        this.collapseExpandedPreview();
         this.screens.forEach(s => {
             this.observer.unobserve(s.getElement());
             s.deactivate();
@@ -404,6 +431,11 @@ export class ReelsPlayer {
 
         el.addEventListener('pointerdown', (e) => {
             if (this.isEmptyState) return;
+
+            const target = e.target as HTMLElement | null;
+            if (target?.closest('button, input, textarea, a, .reels-player-preview')) {
+                return;
+            }
 
             startY = e.clientY;
             startScrollTop = this.pager.scrollTop;
@@ -499,34 +531,81 @@ export class ReelsPlayer {
         onSeek?: (delta: number) => void;
         onWpmChange?: (wpm: number) => void;
         onActiveReelChange?: (reelId: string) => void;
+        onDelete?: () => void;
+        onPreviewExpandChange?: (expanded: boolean) => void;
     }): void {
         this.onPlayPause = handler.onPlayPause;
         this.onSeek = handler.onSeek;
         this.onWpmChange = handler.onWpmChange;
         this.onActiveReelChange = handler.onActiveReelChange;
+        this.onDelete = handler.onDelete;
+        this.onPreviewExpandChange = handler.onPreviewExpandChange;
     }
 
     setWpm(wpm: number): void {
         this.wpm = Math.max(150, Math.min(700, wpm));
         this.chunkValueEl.textContent = `${this.wpm} WPM`;
+        this.speedInput.value = String(this.wpm);
+        const progress = ((this.wpm - 150) / (700 - 150)) * 100;
+        this.speedInput.style.setProperty('--slider-progress', `${progress}%`);
+    }
 
-        const atMin = this.wpm <= 150;
-        const atMax = this.wpm >= 700;
-        this.decrementChunkBtn.disabled = atMin;
-        this.incrementChunkBtn.disabled = atMax;
+    setDeleteEnabled(enabled: boolean): void {
+        this.deleteBtn.disabled = !enabled;
+        this.deleteBtn.classList.toggle('reels-delete-btn--hidden', !enabled);
     }
 
     async playTransition(direction: 'next' | 'prev', updateState: () => void | Promise<void>): Promise<void> {
         // No longer used, handled by native scroll
         await updateState();
     }
+
+    private collapseExpandedPreview(): void {
+        if (!this.expandedReelId) {
+            return;
+        }
+
+        const expandedScreen = this.screens.get(this.expandedReelId);
+        this.expandedReelId = null;
+        expandedScreen?.setExpanded(false);
+        this.contentEl.classList.remove('reels-player-content--preview-expanded');
+        this.pager.style.overflowY = 'scroll';
+        this.onPreviewExpandChange?.(false);
+    }
+
+    private setExpandedPreview(reelId: string, expanded: boolean): void {
+        if (!expanded) {
+            if (this.expandedReelId !== reelId) {
+                return;
+            }
+            this.expandedReelId = null;
+            this.contentEl.classList.remove('reels-player-content--preview-expanded');
+            this.pager.style.overflowY = 'scroll';
+            this.onPreviewExpandChange?.(false);
+            return;
+        }
+
+        if (this.expandedReelId && this.expandedReelId !== reelId) {
+            this.screens.get(this.expandedReelId)?.setExpanded(false);
+        }
+
+        this.expandedReelId = reelId;
+        this.contentEl.classList.add('reels-player-content--preview-expanded');
+        this.pager.style.overflowY = 'hidden';
+        this.onPreviewExpandChange?.(true);
+    }
 }
 
 class ReelScreen {
     private root: HTMLElement;
+    private titleRowEl: HTMLElement;
+    private titleEl: HTMLElement;
+    private expandBtn: HTMLButtonElement;
     private textWindow: HTMLElement;
     private textClipEl: HTMLElement;
     private textEl: HTMLElement;
+    private previewEl: HTMLElement;
+    private previewTokenEls: HTMLElement[] = [];
     private resizeObserver: ResizeObserver;
     private characterOverlay: HTMLElement;
     private characterImage: HTMLImageElement;
@@ -534,9 +613,12 @@ class ReelScreen {
     private background: Background;
     private reel: Reel;
     private characterAssetMap: Map<string, CharacterAsset> = new Map();
+    private isExpanded = false;
+    private onExpandedChange?: (expanded: boolean) => void;
 
-    constructor(reel: Reel) {
+    constructor(reel: Reel, onExpandedChange?: (expanded: boolean) => void) {
         this.reel = reel;
+        this.onExpandedChange = onExpandedChange;
         this.root = document.createElement('div');
         this.root.className = 'reel-screen';
         this.root.dataset.reelId = reel.reelId;
@@ -548,6 +630,29 @@ class ReelScreen {
 
         this.textWindow = document.createElement('div');
         this.textWindow.className = 'reels-player-reader-window';
+
+        this.titleRowEl = document.createElement('div');
+        this.titleRowEl.className = 'reels-player-title-row';
+
+        this.titleEl = document.createElement('div');
+        this.titleEl.className = 'reels-player-title';
+        this.titleEl.textContent = reel.reelId === 'empty' ? '' : reel.title;
+
+        this.expandBtn = document.createElement('button');
+        this.expandBtn.type = 'button';
+        this.expandBtn.className = 'reels-player-expand-btn';
+        this.expandBtn.addEventListener('pointerdown', (event) => {
+            event.stopPropagation();
+        });
+        this.expandBtn.addEventListener('pointerup', (event) => {
+            event.stopPropagation();
+        });
+        this.expandBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.setExpanded(!this.isExpanded);
+        });
+
+        this.titleRowEl.append(this.titleEl);
 
         const topBar = document.createElement('div');
         topBar.className = 'reels-player-bar reels-player-bar-top';
@@ -562,8 +667,19 @@ class ReelScreen {
         this.textEl.className = 'reels-player-text';
         this.textEl.textContent = ''; // Will be updated by reader
 
+        this.previewEl = document.createElement('div');
+        this.previewEl.className = 'reels-player-preview';
+        const stopPagerPropagation = (event: Event) => {
+            if (!this.isExpanded) return;
+            event.stopPropagation();
+        };
+        this.previewEl.addEventListener('pointerdown', stopPagerPropagation);
+        this.previewEl.addEventListener('wheel', stopPagerPropagation, { passive: true });
+        this.previewEl.addEventListener('touchstart', stopPagerPropagation, { passive: true });
+        this.previewEl.addEventListener('touchmove', stopPagerPropagation, { passive: true });
+
         this.textClipEl.append(this.textEl);
-        this.textWindow.append(topBar, this.textClipEl, bottomBar);
+        this.textWindow.append(topBar, this.textClipEl, this.previewEl, bottomBar, this.expandBtn);
 
         this.characterOverlay = document.createElement('div');
         this.characterOverlay.className = 'reel-character-overlay';
@@ -575,8 +691,10 @@ class ReelScreen {
         this.characterOverlay.append(this.characterImage);
 
         this.refreshCharacterAssets();
+        this.renderPreviewTokens(reel.text);
+        this.updateExpandButton();
 
-        this.root.append(this.backgroundContainer, this.characterOverlay, this.textWindow);
+        this.root.append(this.backgroundContainer, this.characterOverlay, this.titleRowEl, this.textWindow);
 
         this.resizeObserver = new ResizeObserver(() => {
             this.fitTextToWindow();
@@ -606,18 +724,25 @@ class ReelScreen {
     setFrame(frame: Frame | null): void {
         if (!frame) {
             this.textEl.textContent = '';
+            this.updatePreviewHighlight(null);
             this.clearCharacter();
             return;
         }
         this.textEl.textContent = frame.tokens.map((token) => token.text).join(' ');
         this.fitTextToWindow();
+        this.updatePreviewHighlight(frame);
 
         this.updateCharacterFromFrame(frame);
     }
 
     setTextContent(text: string): void {
         this.textEl.textContent = text;
+        this.renderPreviewTokens(text);
         this.fitTextToWindow();
+    }
+
+    setTitle(title: string): void {
+        this.titleEl.textContent = title;
     }
 
     addTextClass(className: string): void {
@@ -626,6 +751,20 @@ class ReelScreen {
 
     removeTextClass(className: string): void {
         this.textEl.classList.remove(className);
+    }
+
+    setExpanded(expanded: boolean): void {
+        if (this.reel.reelId === 'empty') {
+            return;
+        }
+
+        this.isExpanded = expanded;
+        this.root.classList.toggle('reel-screen--expanded', expanded);
+        if (expanded) {
+            this.previewEl.scrollTop = 0;
+        }
+        this.updateExpandButton();
+        this.onExpandedChange?.(expanded);
     }
 
     private refreshCharacterAssets(): void {
@@ -668,6 +807,53 @@ class ReelScreen {
         this.characterOverlay.classList.remove('reel-character-overlay--active');
         this.characterOverlay.dataset.side = '';
         this.characterImage.removeAttribute('src');
+    }
+
+    private updateExpandButton(): void {
+        this.expandBtn.textContent = this.isExpanded ? 'Collapse' : 'Expand';
+        this.expandBtn.setAttribute('aria-label', this.isExpanded ? 'Collapse text preview' : 'Expand text preview');
+        this.expandBtn.classList.toggle('reels-player-expand-btn--hidden', this.reel.reelId === 'empty');
+    }
+
+    private renderPreviewTokens(text: string): void {
+        this.previewEl.innerHTML = '';
+        this.previewTokenEls = [];
+
+        const tokens = tokenize(text);
+        tokens.forEach((token, index) => {
+            const tokenEl = document.createElement('span');
+            tokenEl.className = 'reels-player-preview-token';
+            tokenEl.textContent = token.text;
+            this.previewTokenEls.push(tokenEl);
+            this.previewEl.appendChild(tokenEl);
+
+            if (index < tokens.length - 1) {
+                this.previewEl.appendChild(document.createTextNode(' '));
+            }
+        });
+    }
+
+    private updatePreviewHighlight(frame: Frame | null): void {
+        let activeTokenIndex = -1;
+
+        this.previewTokenEls.forEach((tokenEl, index) => {
+            const isActive = frame
+                ? index >= frame.startTokenIndex && index <= frame.endTokenIndex
+                : false;
+            tokenEl.classList.toggle('reels-player-preview-token--active', isActive);
+            if (isActive && activeTokenIndex < 0) {
+                activeTokenIndex = index;
+            }
+        });
+
+        const activeTokenEl = activeTokenIndex >= 0 ? this.previewTokenEls[activeTokenIndex] : null;
+        if (this.isExpanded && activeTokenEl) {
+            activeTokenEl.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest'
+            });
+        }
     }
 
     private fitTextToWindow(): void {

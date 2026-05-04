@@ -146,6 +146,18 @@ export function updateSessionActiveReel(docId: string, activeReelId: string | nu
   persistState(state);
 }
 
+export function deleteStoredSession(docId: string): void {
+  const state = loadState();
+  const nextSessions = state.sessions.filter((item) => item.docId !== docId);
+
+  if (nextSessions.length === state.sessions.length) {
+    return;
+  }
+
+  state.sessions = nextSessions;
+  persistState(state);
+}
+
 export function getLatestSession(): StoredReelSession | null {
   return getStoredSessions()[0] ?? null;
 }

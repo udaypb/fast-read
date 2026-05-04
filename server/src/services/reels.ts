@@ -4,9 +4,9 @@ import { getBackgroundCatalog } from './backgrounds.js';
 import { splitWords } from './text.js';
 
 const TARGET_WPM = 250;
-const MIN_WORDS = 150;
-const TARGET_WORDS = 280;
-const MAX_WORDS = 360;
+const MIN_WORDS = 90;
+const TARGET_WORDS = 140;
+const MAX_WORDS = 180;
 
 function estimateDuration(wordCount: number): number {
   return Math.max(1, Math.round(wordCount / (TARGET_WPM / 60)));

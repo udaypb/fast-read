@@ -1,15 +1,15 @@
-import { DisplayMode } from './ReelsPlayer';
 import { backgroundCatalog } from './backgrounds/catalog';
 import type { Reel } from '../api/types';
 
 export type SettingsPanelHandlers = {
-    onModeChange: (mode: DisplayMode) => void;
     onStyleChange: (category: string, specificId?: string) => void;
     onPlayPause?: () => void;
     onRewind?: () => void;
     onForward?: () => void;
     onWpmChange?: (wpm: number) => void;
+    onChunkSizeChange?: (chunkSize: number) => void;
     onReelSelect?: (reel: Reel) => void;
+    onReelDelete?: (reel: Reel) => void;
 };
 
 export class SettingsPanel {
@@ -18,12 +18,13 @@ export class SettingsPanel {
     private playPauseBtn: HTMLButtonElement;
     private wpmInput?: HTMLInputElement;
     private wpmValue?: HTMLElement;
+    private chunkButtons: HTMLButtonElement[] = [];
+    private chunkValue?: HTMLElement;
+    private chunkSize = 1;
     private isOpen = false;
     private handlers?: SettingsPanelHandlers;
-    private activeMode: DisplayMode = DisplayMode.Standard;
     private activeCategory = 'calming';
     private activeId?: string;
-    private modeButtons: Map<DisplayMode, HTMLButtonElement> = new Map();
     private categoryTabs: HTMLElement[] = [];
     private previewsContainer: HTMLElement;
     private reels: Reel[] = [];
@@ -40,9 +41,10 @@ export class SettingsPanel {
         { id: 'real', label: 'Real' }
     ];
 
-    constructor(container: HTMLElement, initialWpm: number) {
+    constructor(container: HTMLElement, initialWpm: number, initialChunkSize: number = 1) {
         this.root = document.createElement('div');
         this.root.className = 'settings-panel';
+        this.chunkSize = initialChunkSize;
 
         // Prevent scroll events from bubbling to window (which handles reel navigation)
         // This ensures the settings panel can be scrolled without triggering next/prev reel
@@ -104,41 +106,44 @@ export class SettingsPanel {
         transportRow.append(rewindBtn, this.playPauseBtn, forwardBtn);
         controlsSection.appendChild(transportRow);
 
-        // Sliders Section (WPM & Words/Frame)
+        // Reader settings section
         const slidersContainer = document.createElement('div');
         slidersContainer.className = 'settings-sliders-container';
 
-        // WPM Slider
-        const wpmRow = document.createElement('div');
-        wpmRow.className = 'settings-slider-row';
-        const wpmLabel = document.createElement('div');
-        wpmLabel.className = 'settings-slider-label';
-        wpmLabel.textContent = 'Speed';
+        const chunkRow = document.createElement('div');
+        chunkRow.className = 'settings-slider-row';
 
-        this.wpmValue = document.createElement('div');
-        this.wpmValue.className = 'settings-slider-value';
-        this.wpmValue.textContent = `${initialWpm} WPM`;
+        const chunkHeader = document.createElement('div');
+        chunkHeader.className = 'settings-slider-header';
 
-        const wpmHeader = document.createElement('div');
-        wpmHeader.className = 'settings-slider-header';
-        wpmHeader.append(wpmLabel, this.wpmValue);
+        const chunkLabel = document.createElement('div');
+        chunkLabel.className = 'settings-slider-label';
+        chunkLabel.textContent = 'Words / Frame';
 
-        this.wpmInput = document.createElement('input');
-        this.wpmInput.type = 'range';
-        this.wpmInput.className = 'settings-range-input';
-        this.wpmInput.min = '150';
-        this.wpmInput.max = '700';
-        this.wpmInput.step = '25';
-        this.wpmInput.value = String(initialWpm);
-        this.wpmInput.addEventListener('input', () => {
-            const val = Number(this.wpmInput!.value);
-            if (this.wpmValue) this.wpmValue.textContent = `${val} WPM`;
-            this.handlers?.onWpmChange?.(val);
+        this.chunkValue = document.createElement('div');
+        this.chunkValue.className = 'settings-slider-value';
+        chunkHeader.append(chunkLabel, this.chunkValue);
+
+        const chunkSegment = document.createElement('div');
+        chunkSegment.className = 'settings-segmented-control';
+
+        [1, 2, 3].forEach((size) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'settings-segmented-btn';
+            btn.textContent = String(size);
+            btn.addEventListener('click', () => {
+                this.setChunkSize(size);
+                this.handlers?.onChunkSizeChange?.(size);
+            });
+            this.chunkButtons.push(btn);
+            chunkSegment.appendChild(btn);
         });
 
-        wpmRow.append(wpmHeader, this.wpmInput);
+        chunkRow.append(chunkHeader, chunkSegment);
+        this.setChunkSize(initialChunkSize);
 
-        slidersContainer.append(wpmRow);
+        slidersContainer.append(chunkRow);
         controlsSection.appendChild(slidersContainer);
 
         this.contentWrapper.appendChild(controlsSection);
@@ -164,24 +169,6 @@ export class SettingsPanel {
 
         this.contentWrapper.appendChild(styleSection);
 
-        // Mode selector section
-        const modeSection = document.createElement('div');
-        modeSection.className = 'settings-section';
-
-        const modeHeader = document.createElement('div');
-        modeHeader.className = 'settings-section-header';
-        modeHeader.textContent = 'Display Mode';
-        modeSection.appendChild(modeHeader);
-
-        const modeButtons = document.createElement('div');
-        modeButtons.className = 'settings-mode-buttons';
-
-        this.createModeButton(DisplayMode.Standard, '<div class="mode-icon-wide">16:9</div>', 'Standard style', modeButtons);
-        this.createModeButton(DisplayMode.Portrait, '<div class="mode-icon-tall">9:16</div>', 'Reel style', modeButtons);
-
-        modeSection.appendChild(modeButtons);
-        this.contentWrapper.appendChild(modeSection);
-
         this.root.appendChild(this.contentWrapper);
         container.appendChild(this.root);
     }
@@ -196,33 +183,6 @@ export class SettingsPanel {
         } else {
             this.playPauseBtn.classList.add('settings-play-btn--paused');
         }
-    }
-
-    private createModeButton(mode: DisplayMode, icon: string, label: string, container: HTMLElement): void {
-        const btn = document.createElement('button');
-        btn.className = 'settings-mode-btn';
-        btn.innerHTML = `<span class="mode-btn-icon">${icon}</span><span class="mode-btn-label">${label}</span>`;
-        btn.title = label;
-
-        btn.addEventListener('click', () => {
-            this.activeMode = mode;
-            this.updateModeState();
-            this.handlers?.onModeChange(mode);
-            this.toggle(); // Close automatically on switch
-        });
-
-        this.modeButtons.set(mode, btn);
-        container.appendChild(btn);
-    }
-
-    private updateModeState(): void {
-        this.modeButtons.forEach((btn, mode) => {
-            if (mode === this.activeMode) {
-                btn.classList.add('settings-mode-btn--active');
-            } else {
-                btn.classList.remove('settings-mode-btn--active');
-            }
-        });
     }
 
     private renderTabs(container: HTMLElement): void {
@@ -317,7 +277,22 @@ export class SettingsPanel {
             title.className = 'settings-reel-title';
             title.textContent = reel.title || `Reel ${reel.index + 1}`;
 
-            btn.appendChild(title);
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'settings-reel-delete-btn';
+            deleteBtn.setAttribute('aria-label', `Delete ${reel.title || `Reel ${reel.index + 1}`}`);
+            deleteBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M9 3.75h6a1.5 1.5 0 0 1 1.5 1.5v.75H20a.75.75 0 0 1 0 1.5h-1.03l-.9 11.02A2.25 2.25 0 0 1 15.83 20.5H8.17a2.25 2.25 0 0 1-2.24-1.98L5.03 7.5H4a.75.75 0 0 1 0-1.5h3.5v-.75A1.5 1.5 0 0 1 9 3.75Zm6 2.25v-.75h-6V6h6ZM6.53 7.5l.89 10.9a.75.75 0 0 0 .75.6h7.66a.75.75 0 0 0 .75-.6l.89-10.9H6.53Zm3.22 2.25a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Zm4.5 0a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Z"/>
+                </svg>
+            `;
+            deleteBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.handlers?.onReelDelete?.(reel);
+            });
+
+            btn.append(deleteBtn, title);
             btn.addEventListener('click', () => {
                 this.activeReelId = reel.reelId;
                 this.updateReelPreviewState();
@@ -395,8 +370,8 @@ export class SettingsPanel {
         };
 
         const maybeStartDrag = (target: HTMLElement, clientY: number): boolean => {
-            // Only allow dragging in portrait mode (bottom sheet)
-            if (!this.isOpen || this.activeMode !== DisplayMode.Portrait) return false;
+            // Only allow dragging while the sheet is open
+            if (!this.isOpen) return false;
 
             const isHandle = target.classList.contains('settings-drag-handle');
 
@@ -495,11 +470,6 @@ export class SettingsPanel {
         this.root.addEventListener('touchcancel', onTouchEnd);
     }
 
-    public setMode(mode: DisplayMode): void {
-        this.activeMode = mode;
-        this.updateModeState();
-    }
-
     public setActiveStyle(category: string): void {
         this.activeCategory = category;
         this.updateTabState();
@@ -527,10 +497,24 @@ export class SettingsPanel {
     public setWpm(wpm: number): void {
         if (this.wpmInput) {
             this.wpmInput.value = String(wpm);
+            this.wpmInput.style.setProperty('--slider-progress', `${((wpm - 150) / (700 - 150)) * 100}%`);
         }
         if (this.wpmValue) {
             this.wpmValue.textContent = `${wpm} WPM`;
         }
+    }
+
+    public setChunkSize(chunkSize: number): void {
+        this.chunkSize = Math.max(1, Math.min(3, chunkSize));
+        if (this.chunkValue) {
+            const label = this.chunkSize === 1 ? '1 word' : `${this.chunkSize} words`;
+            this.chunkValue.textContent = label;
+        }
+
+        this.chunkButtons.forEach((btn, index) => {
+            const value = index + 1;
+            btn.classList.toggle('settings-segmented-btn--active', value === this.chunkSize);
+        });
     }
 
     public bind(handlers: SettingsPanelHandlers): void {

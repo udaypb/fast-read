@@ -3,10 +3,11 @@ import './styles/main.css';
 import { groupTokens } from './reader/Grouper';
 import { Reader } from './reader/Reader';
 import { tokenize } from './reader/Tokenizer';
-import { createDocFromFile, createDocFromText, getReelPage, streamReels } from './api/client';
+import { createDocFromFile, createDocFromText, getDocStatus, getReelPage, streamReels } from './api/client';
 import type { Reel, ReelPage } from './api/types';
 import type { Frame } from './reader/types';
 import {
+  deleteStoredSession,
   getStoredSessions,
   markVisitedApp,
   saveOrUpdateSession,
@@ -14,11 +15,9 @@ import {
   type StoredReelSession
 } from './storage/reelSessionStore';
 import { Background } from './ui/Background';
-import { Controls } from './ui/Controls';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { ImportDialog } from './ui/ImportDialog';
 import { ReelRail } from './ui/ReelRail';
-import { ReaderView } from './ui/ReaderView';
-import { SeekBar } from './ui/SeekBar';
 import { SettingsPanel } from './ui/SettingsPanel';
 import { ReelsPlayer, DisplayMode } from './ui/ReelsPlayer';
 import { SettingsButton } from './ui/SettingsButton';
@@ -31,13 +30,14 @@ const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) {
   throw new Error('App container not found');
 }
-document.body.classList.add('mode-standard');
+document.body.classList.add('mode-portrait');
 
 const background = new Background(app);
 background.start();
+const confirmDialog = new ConfirmDialog();
 
 const DEFAULT_WPM = 250;
-const DEFAULT_CHUNK_SIZE = 2;
+const DEFAULT_CHUNK_SIZE = 1;
 const REEL_PAGE_LIMIT = 5;
 const REEL_TRANSITION_PAUSE_MS = 1000;
 
@@ -86,75 +86,18 @@ reelRail.hide();
 reelRail.setStatus('Upload a PDF or paste text to load reels.');
 reelRail.setLoading(false);
 
-const readerShell = document.createElement('div');
-readerShell.className = 'reader-shell';
-app.append(readerShell);
-
-const readerView = new ReaderView(readerShell);
-const controlsStack = document.createElement('div');
-controlsStack.className = 'controls-stack';
-app.append(controlsStack);
-
-const controls = new Controls(controlsStack, DEFAULT_WPM);
-const seekBar = new SeekBar(controls.getElement());
-controls.getElement().insertBefore(seekBar.getElement(), controls.getSlidersElement());
-
 const reelsPlayer = new ReelsPlayer(app);
-const settingsPanel = new SettingsPanel(controlsStack, DEFAULT_WPM);
-const settingsButton = new SettingsButton(controlsStack);
+const settingsPanel = new SettingsPanel(reelsPlayer.getContentElement(), DEFAULT_WPM, DEFAULT_CHUNK_SIZE);
+const settingsButton = new SettingsButton(reelsPlayer.getContentElement());
 let stopReelStream: (() => void) | null = null;
+let stopReelPoll: (() => void) | null = null;
 reelsPlayer.setWpm(DEFAULT_WPM);
 
 // Bind settings button to toggle settings panel
 settingsButton.bind(() => settingsPanel.toggle());
-settingsPanel.open();
 
 // Bind settings panel handlers
 settingsPanel.bind({
-  onModeChange: (mode: DisplayMode) => {
-    clearReelAutoplayTimeout();
-    const isPortrait = mode === DisplayMode.Portrait;
-    reelsPlayer.setMode(mode);
-    document.body.classList.toggle('mode-portrait', isPortrait);
-    document.body.classList.toggle('mode-standard', !isPortrait);
-
-    // Position settings and panel
-    if (isPortrait) {
-      reelsPlayer.getContentElement().appendChild(settingsButton.getElement());
-      reelsPlayer.getContentElement().appendChild(settingsPanel.getElement());
-    } else {
-      controlsStack.appendChild(settingsButton.getElement());
-      controlsStack.appendChild(settingsPanel.getElement());
-    }
-
-    if (isPortrait) {
-      // Auto-play if not playing
-      if (!reader.getState().isPlaying && reelState.activeReelId) {
-        reader.play();
-      }
-
-      // If no document or no reels yet, show empty state
-      if (!reelState.docId || !reelState.activeReelId) {
-        showEmptyReel();
-      }
-      settingsPanel.close();
-    } else {
-      const nextFrames = groupTokens(tokenize(activeText), currentChunkSize);
-      reader.setFrames(nextFrames, { preservePosition: false });
-      readerView.setFrame(nextFrames[0] ?? null);
-      settingsPanel.open();
-    }
-
-    // Move background element for clipping
-    const bgEl = document.querySelector('.bg-layer');
-    if (bgEl instanceof HTMLElement) {
-      if (isPortrait) {
-        reelsPlayer.getContentElement().insertBefore(bgEl, reelsPlayer.getContentElement().firstChild);
-      } else {
-        app.insertBefore(bgEl, app.firstChild);
-      }
-    }
-  },
   onStyleChange: (style: string, specificId?: string) => {
     activeStyle = style;
 
@@ -193,15 +136,17 @@ settingsPanel.bind({
   },
   onPlayPause: () => {
     togglePlaybackFromStartIfEnded();
-    if (document.body.classList.contains('mode-portrait')) {
-      reelsPlayer.showPlayPauseIndicator(reader.getState().isPlaying);
-    }
+    reelsPlayer.showPlayPauseIndicator(reader.getState().isPlaying);
   },
   onRewind: () => reader.seek(-3),
   onForward: () => reader.seek(3),
   onWpmChange: (wpm) => reader.setWpm(wpm),
+  onChunkSizeChange: (chunkSize) => applyChunkSize(chunkSize),
   onReelSelect: (reel) => {
     selectReel(reel, true);
+  },
+  onReelDelete: (reel) => {
+    void deleteReelFromSession(reel);
   }
 });
 
@@ -212,11 +157,21 @@ reelsPlayer.bind({
   },
   onSeek: (delta) => reader.seek(delta),
   onWpmChange: (wpm) => reader.setWpm(wpm),
+  onPreviewExpandChange: (expanded) => {
+    if (expanded) {
+      clearReelAutoplayTimeout();
+      reader.pause();
+      settingsPanel.close();
+    }
+  },
+  onDelete: () => {
+    void deleteActiveReelGroup();
+  },
   onActiveReelChange: (reelId: string) => {
     // When the user scrolls manually, sync the rest of the app
     const reel = reelState.currentPage?.reels.find(r => r.reelId === reelId);
     if (reel) {
-      selectReel(reel, true, false); // autoplay true, scroll false
+      selectReel(reel, false, false);
     }
   }
 });
@@ -224,28 +179,53 @@ reelsPlayer.bind({
 let activeStyle: string = 'calming';
 let manualBackgroundId: string | null = null;
 
+function applyChunkSize(chunkSize: number): void {
+  currentChunkSize = Math.max(1, Math.min(3, chunkSize));
+  settingsPanel.setChunkSize(currentChunkSize);
+
+  const wasPlaying = reader.getState().isPlaying;
+
+  if (reelState.activeReelId) {
+    const activeReel =
+      reelState.currentPage?.reels.find((reel) => reel.reelId === reelState.activeReelId) ?? null;
+
+    if (activeReel) {
+      const reelFrames = buildReelFrames(activeReel, currentChunkSize);
+      reader.setFrames(reelFrames, { preservePosition: false });
+      reelsPlayer.setFrame(reelFrames[0] ?? null);
+      reelsPlayer.setProgress(0, reelFrames.length);
+      if (wasPlaying) {
+        reader.play();
+      }
+      return;
+    }
+  }
+
+  const nextFrames = groupTokens(tokenize(activeText), currentChunkSize);
+  reader.setFrames(nextFrames, { preservePosition: false });
+  reelsPlayer.setFrame(nextFrames[0] ?? null);
+  reelsPlayer.setProgress(0, nextFrames.length);
+  if (wasPlaying) {
+    reader.play();
+  }
+}
+
 const reader = new Reader({
   frames,
   wpm: DEFAULT_WPM,
   onFrame: (frame) => {
-    readerView.setFrame(frame);
     reelsPlayer.setFrame(frame);
   },
   onStateChange: (state) => {
-    controls.setPlaying(state.isPlaying);
     reelsPlayer.setPlaying(state.isPlaying);
     reelsPlayer.setProgress(state.currentIndex, state.totalFrames);
     settingsPanel.setPlaying(state.isPlaying);
-    controls.setWpm(state.wpm);
     settingsPanel.setWpm(state.wpm);
     reelsPlayer.setWpm(state.wpm);
-    seekBar.setProgress(state.currentIndex, state.totalFrames);
-    controls.setFocusMode(state.isPlaying);
   }
 });
 
 reader.setFrames(frames, { preservePosition: false });
-readerView.setFrame(frames[0] ?? null);
 
 const storedSessions = getStoredSessions();
 storedSessions.forEach((session) => sessionCache.set(session.docId, session));
@@ -257,6 +237,18 @@ function getOrderedSessions(): StoredReelSession[] {
     const bTime = new Date(b.createdAt).getTime();
     return aTime - bTime;
   });
+}
+
+function getLatestStoredSession(): StoredReelSession | null {
+  return [...sessionCache.values()].sort((a, b) => {
+    const aTime = new Date(a.updatedAt).getTime();
+    const bTime = new Date(b.updatedAt).getTime();
+    return bTime - aTime;
+  })[0] ?? null;
+}
+
+function syncDeleteAvailability(): void {
+  reelsPlayer.setDeleteEnabled(Boolean(reelState.docId));
 }
 
 function syncRailFromSessions(options?: { currentUploadId?: string | null; activeReelId?: string | null }): void {
@@ -294,13 +286,10 @@ function togglePlaybackFromStartIfEnded(): void {
 }
 
 function activatePortraitMode(): void {
-  settingsPanel.setMode(DisplayMode.Portrait);
   reelsPlayer.setMode(DisplayMode.Portrait);
   document.body.classList.add('mode-portrait');
   document.body.classList.remove('mode-standard');
-
-  reelsPlayer.getContentElement().appendChild(settingsButton.getElement());
-  reelsPlayer.getContentElement().appendChild(settingsPanel.getElement());
+  settingsPanel.close();
 
   const bgEl = document.querySelector('.bg-layer');
   if (bgEl instanceof HTMLElement) {
@@ -313,6 +302,7 @@ function restoreSession(session: StoredReelSession): void {
   sessionCache.set(session.docId, session);
   activeSessionCreatedAt = session.createdAt;
   resetReelState(session.docId);
+  syncDeleteAvailability();
   reelState.documentCount = Math.max(reelState.documentCount, sessionCache.size);
 
   reelRail.show();
@@ -412,27 +402,6 @@ async function runIntroSequence(sessions: StoredReelSession[]) {
   showEmptyReel();
 }
 
-controls.bind({
-  onPlayPause: () => togglePlaybackFromStartIfEnded(),
-  onRestart: () => {
-    reader.pause();
-    reader.seek(-reader.getState().currentIndex);
-  },
-  onRewind: () => reader.seek(-3),
-  onForward: () => reader.seek(3),
-  onWpmChange: (wpm) => reader.setWpm(wpm)
-});
-
-seekBar.bind({
-  onSeek: (index) => {
-    const state = reader.getState();
-    reader.seek(index - state.currentIndex);
-  },
-  onJump: (delta) => {
-    reader.seek(delta);
-  }
-});
-
 const reelState = {
   docId: '',
   activeReelId: null as string | null,
@@ -490,6 +459,117 @@ function closeReelStream(): void {
     stopReelStream();
     stopReelStream = null;
   }
+  if (stopReelPoll) {
+    stopReelPoll();
+    stopReelPoll = null;
+  }
+}
+
+function confirmDeletion(options: { title: string; message: string; confirmLabel?: string }): Promise<boolean> {
+  return confirmDialog.open(options);
+}
+
+async function deleteActiveReelGroup(options?: { skipConfirm?: boolean }): Promise<void> {
+  const docId = reelState.docId;
+  if (!docId) {
+    return;
+  }
+
+  if (!options?.skipConfirm) {
+    const session = sessionCache.get(docId);
+    const label = session?.label || 'this reel group';
+    const confirmed = await confirmDeletion({
+      title: 'Delete Reel Group?',
+      message: `Remove ${label} and all reels in it from this session?`,
+      confirmLabel: 'Delete group'
+    });
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  closeReelStream();
+  sessionCache.delete(docId);
+  deleteStoredSession(docId);
+  reelState.documentCount = sessionCache.size;
+  reelRail.setLoading(false);
+  reelRail.setCooking(false);
+
+  const nextSession = getLatestStoredSession();
+  if (nextSession) {
+    restoreSession(nextSession);
+    return;
+  }
+
+  resetReelState('');
+  syncDeleteAvailability();
+  reelRail.setStatus('Upload a PDF or paste text to load reels.');
+  reelRail.hide();
+  importDialog.setMinimized(false);
+  importDialog.setButtonText('Upload another PDF or text');
+  showEmptyReel();
+}
+
+function normalizeSessionReels(reels: Reel[]): Reel[] {
+  return [...reels]
+    .sort((a, b) => a.index - b.index)
+    .map((reel, index) => ({ ...reel, index }));
+}
+
+async function deleteReelFromSession(reelToDelete: Reel): Promise<void> {
+  const session = sessionCache.get(reelToDelete.docId);
+  if (!session) {
+    return;
+  }
+
+  const confirmed = await confirmDeletion({
+    title: 'Delete Reel?',
+    message: reelToDelete.title || `Reel ${reelToDelete.index + 1}`,
+    confirmLabel: 'Delete reel'
+  });
+  if (!confirmed) {
+    return;
+  }
+
+  const originalReels = [...session.reels].sort((a, b) => a.index - b.index);
+  const deleteIndex = originalReels.findIndex((reel) => reel.reelId === reelToDelete.reelId);
+  if (deleteIndex < 0) {
+    return;
+  }
+
+  const remainingReels = normalizeSessionReels(
+    originalReels.filter((reel) => reel.reelId !== reelToDelete.reelId)
+  );
+
+  if (remainingReels.length === 0) {
+    await deleteActiveReelGroup({ skipConfirm: true });
+    return;
+  }
+
+  const nextActiveReel =
+    reelState.activeReelId === reelToDelete.reelId
+      ? remainingReels[Math.min(deleteIndex, remainingReels.length - 1)] ?? remainingReels[0]
+      : remainingReels.find((reel) => reel.reelId === reelState.activeReelId) ?? remainingReels[0];
+
+  const updatedSession: StoredReelSession = {
+    ...session,
+    reels: remainingReels,
+    activeReelId: nextActiveReel?.reelId ?? null,
+    updatedAt: new Date().toISOString()
+  };
+
+  sessionCache.set(updatedSession.docId, updatedSession);
+  saveOrUpdateSession(updatedSession);
+
+  if (reelState.docId === updatedSession.docId) {
+    restoreSession(updatedSession);
+    return;
+  }
+
+  syncRailFromSessions({
+    currentUploadId: reelState.docId,
+    activeReelId: reelState.activeReelId
+  });
 }
 
 async function ingestFile(file: File): Promise<void> {
@@ -528,6 +608,7 @@ async function ingestDocument(
     activeSessionCreatedAt = nowIso;
     reelState.documentCount += 1;
     resetReelState(docId);
+    syncDeleteAvailability();
     reelState.currentPage = {
       docId,
       totalReels: 0,
@@ -563,6 +644,7 @@ async function ingestDocument(
       (reel) => handleStreamedReel(docId, reel),
       () => finalizeStream(docId)
     );
+    stopReelPoll = startReelPoll(docId);
   } catch (error) {
     console.error(error);
     reelRail.show();
@@ -574,59 +656,52 @@ async function ingestDocument(
 }
 
 function handleStreamedReel(docId: string, reel: Reel): void {
-  if (reelState.docId !== docId) return;
-
-  const currentPage = reelState.currentPage;
-  if (!currentPage) return;
-
-  const nextReels = [...currentPage.reels];
-  const existingIndex = nextReels.findIndex((item) => item.reelId === reel.reelId);
-  if (existingIndex >= 0) {
-    nextReels[existingIndex] = reel;
-  } else {
-    nextReels.push(reel);
-    nextReels.sort((a, b) => a.index - b.index);
-  }
-
-  reelState.currentPage = {
-    ...currentPage,
-    totalReels: nextReels.length,
-    limit: Math.max(REEL_PAGE_LIMIT, nextReels.length),
-    reels: nextReels,
-    prevOffset: null,
-    nextOffset: null
-  };
-
-  reelRail.show();
-  reelRail.setLoading(false);
-  settingsPanel.setReels(nextReels, { activeReelId: reelState.activeReelId ?? undefined, align: 'end' });
-  reelsPlayer.setLoading(false);
-
-  if (nextReels.length === 1 && !reelState.activeReelId) {
-    reelsPlayer.clearReels();
-  }
-
-  reelsPlayer.addReel(reel);
-  reelsPlayer.updateStatus(nextReels.length, false);
-
-  if (!reelState.activeReelId) {
-    selectReel(reel, true);
-  }
-
-  persistCurrentSession(docId, nextReels, reelState.activeReelId);
-  syncRailFromSessions({
-    currentUploadId: docId,
-    activeReelId: reelState.activeReelId
-  });
+  syncDocReels(docId, [reel]);
 }
 
-function finalizeStream(docId: string): void {
+async function fetchAllReelsForDoc(docId: string): Promise<Reel[]> {
+  const allReels: Reel[] = [];
+  let offset = 0;
+
+  while (true) {
+    const page = await getReelPage(docId, offset, REEL_PAGE_LIMIT);
+    if (page.reels.length === 0) {
+      break;
+    }
+
+    allReels.push(...page.reels);
+
+    if (page.nextOffset === null) {
+      break;
+    }
+
+    offset = page.nextOffset;
+  }
+
+  return mergeReels([], allReels);
+}
+
+async function finalizeStream(docId: string): Promise<void> {
+  if (stopReelPoll) {
+    stopReelPoll();
+    stopReelPoll = null;
+  }
+
   if (reelState.docId !== docId) return;
 
   stopReelStream = null;
   reelRail.setLoading(false);
   reelRail.setCooking(false);
   reelsPlayer.setLoading(false);
+
+  try {
+    const allReels = await fetchAllReelsForDoc(docId);
+    if (allReels.length > 0) {
+      syncDocReels(docId, allReels);
+    }
+  } catch (error) {
+    console.warn('Failed to fetch full reel set after stream completion:', error);
+  }
 
   const total = reelState.currentPage?.reels.length ?? 0;
   reelsPlayer.updateStatus(total, true);
@@ -638,6 +713,119 @@ function finalizeStream(docId: string): void {
   }
 
   persistCurrentSession(docId, reelState.currentPage?.reels ?? [], reelState.activeReelId);
+}
+
+function mergeReels(existing: Reel[], incoming: Reel[]): Reel[] {
+  const merged = new Map<string, Reel>();
+
+  existing.forEach((reel) => {
+    merged.set(reel.reelId, reel);
+  });
+
+  incoming.forEach((reel) => {
+    merged.set(reel.reelId, reel);
+  });
+
+  return [...merged.values()].sort((a, b) => a.index - b.index);
+}
+
+function syncDocReels(docId: string, incomingReels: Reel[]): void {
+  if (incomingReels.length === 0) return;
+
+  const cachedSession = sessionCache.get(docId);
+  const mergedReels = mergeReels(cachedSession?.reels ?? [], incomingReels);
+  const activeReelId =
+    reelState.docId === docId ? reelState.activeReelId : (cachedSession?.activeReelId ?? null);
+
+  persistCurrentSession(docId, mergedReels, activeReelId);
+  syncRailFromSessions({
+    currentUploadId: reelState.docId === docId ? docId : reelState.docId,
+    activeReelId: reelState.docId === docId ? reelState.activeReelId : reelState.activeReelId
+  });
+
+  if (reelState.docId !== docId) {
+    return;
+  }
+
+  const currentPage = reelState.currentPage ?? {
+    docId,
+    totalReels: 0,
+    offset: 0,
+    limit: REEL_PAGE_LIMIT,
+    reels: [],
+    prevOffset: null,
+    nextOffset: null
+  };
+
+  reelState.currentPage = {
+    ...currentPage,
+    totalReels: mergedReels.length,
+    limit: Math.max(REEL_PAGE_LIMIT, mergedReels.length),
+    reels: mergedReels
+  };
+
+  reelRail.show();
+  reelRail.setLoading(false);
+  settingsPanel.setReels(mergedReels, { activeReelId: reelState.activeReelId ?? undefined, align: 'end' });
+  reelsPlayer.setLoading(false);
+
+  if (mergedReels.length > 0 && !reelState.activeReelId) {
+    reelsPlayer.clearReels();
+  }
+
+  mergedReels.forEach((reel) => {
+    reelsPlayer.addReel(reel);
+  });
+  reelsPlayer.updateStatus(mergedReels.length, false);
+
+  if (!reelState.activeReelId && mergedReels[0]) {
+    selectReel(mergedReels[0], true);
+  }
+}
+
+function startReelPoll(docId: string): () => void {
+  let stopped = false;
+  let timer: number | null = null;
+
+  const tick = async (): Promise<void> => {
+    if (stopped) return;
+
+    try {
+      const [status, page] = await Promise.all([
+        getDocStatus(docId),
+        getReelPage(docId, 0, REEL_PAGE_LIMIT)
+      ]);
+
+      if (page.reels.length > 0) {
+        syncDocReels(docId, page.reels);
+      }
+
+      if (status.state === 'ready' || status.state === 'error') {
+        if (reelState.docId === docId) {
+          void finalizeStream(docId);
+        }
+        return;
+      }
+    } catch (error) {
+      console.warn('Reel polling fallback failed:', error);
+    }
+
+    if (!stopped) {
+      timer = window.setTimeout(() => {
+        void tick();
+      }, 400);
+    }
+  };
+
+  void tick();
+
+  return () => {
+    stopped = true;
+    if (timer !== null) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+  };
 }
 
 async function navigateToNextReel(): Promise<void> {
@@ -657,17 +845,15 @@ async function navigateToNextReel(): Promise<void> {
   }
 
   if (nextReel) {
-    selectReel(nextReel, true);
+    selectReel(nextReel, false);
     reelRail.setActive(nextReel.reelId);
-    scheduleReelAutoplay(nextReel.reelId);
   } else if (page.nextOffset !== null) {
     await loadReelPage(page.nextOffset, 'start');
     const newPage = reelState.currentPage;
     const firstReel = newPage?.reels.find(r => r.index === nextIndex);
     if (firstReel) {
-      selectReel(firstReel, true);
+      selectReel(firstReel, false);
       reelRail.setActive(firstReel.reelId);
-      scheduleReelAutoplay(firstReel.reelId);
     }
   }
 }
@@ -688,17 +874,15 @@ async function navigateToPreviousReel(): Promise<void> {
   }
 
   if (prevReel) {
-    selectReel(prevReel, true);
+    selectReel(prevReel, false);
     reelRail.setActive(prevReel.reelId);
-    scheduleReelAutoplay(prevReel.reelId);
   } else if (page.prevOffset !== null) {
     await loadReelPage(page.prevOffset, 'end');
     const newPage = reelState.currentPage;
     const lastReel = newPage?.reels[newPage.reels.length - 1];
     if (lastReel) {
-      selectReel(lastReel, true);
+      selectReel(lastReel, false);
       reelRail.setActive(lastReel.reelId);
-      scheduleReelAutoplay(lastReel.reelId);
     }
   }
 }
@@ -718,8 +902,6 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  const isPortraitMode = document.body.classList.contains('mode-portrait');
-
   switch (event.key) {
     case ' ':
       event.preventDefault();
@@ -736,20 +918,12 @@ window.addEventListener('keydown', (event) => {
     case 'ArrowDown':
     case 'PageDown':
       event.preventDefault();
-      if (isPortraitMode) {
-        void navigateToNextReel();
-      } else {
-        reader.setWpm(reader.getState().wpm - 25);
-      }
+      void navigateToNextReel();
       break;
     case 'ArrowUp':
     case 'PageUp':
       event.preventDefault();
-      if (isPortraitMode) {
-        void navigateToPreviousReel();
-      } else {
-        reader.setWpm(reader.getState().wpm + 25);
-      }
+      void navigateToPreviousReel();
       break;
     default:
       break;
@@ -796,7 +970,7 @@ async function loadReelPage(offset: number, align: 'start' | 'end'): Promise<voi
 function resetReelState(docId: string): void {
   reelState.docId = docId;
   reelState.activeReelId = null;
-  reelState.currentReelIndex = 0;
+  reelState.currentReelIndex = -1;
   reelState.currentPage = null;
   reelCache.clear();
   reelRequests.clear();
@@ -845,21 +1019,6 @@ function clearReelAutoplayTimeout(): void {
   }
 }
 
-function scheduleReelAutoplay(reelId: string): void {
-  clearReelAutoplayTimeout();
-  if (reelsPlayer.getMode() !== DisplayMode.Portrait) {
-    reader.play();
-    return;
-  }
-
-  reelAutoplayTimeout = window.setTimeout(() => {
-    reelAutoplayTimeout = null;
-    if (reelState.activeReelId !== reelId) return;
-    if (reelsPlayer.getMode() !== DisplayMode.Portrait) return;
-    reader.play();
-  }, REEL_TRANSITION_PAUSE_MS);
-}
-
 function selectReel(reel: Reel, autoplay: boolean, scroll: boolean = true): void {
   clearReelAutoplayTimeout();
   reelState.activeReelId = reel.reelId;
@@ -896,6 +1055,11 @@ function selectReel(reel: Reel, autoplay: boolean, scroll: boolean = true): void
   }
 
   const reelFrames = buildReelFrames(reel, currentChunkSize);
+
+  if (!autoplay) {
+    reader.pause();
+  }
+
   reader.setFrames(reelFrames, { preservePosition: false });
 
   if (autoplay) {
@@ -916,6 +1080,7 @@ function buildReelFrames(reel: Reel, chunkSize: number): Frame[] {
 
   const frames: Frame[] = [];
   let frameIndex = 0;
+  let tokenOffset = 0;
 
   script.forEach((line) => {
     if (!line.text) return;
@@ -923,11 +1088,14 @@ function buildReelFrames(reel: Reel, chunkSize: number): Frame[] {
     const lineFrames = groupTokens(tokens, chunkSize).map((frame) => ({
       ...frame,
       index: frameIndex++,
+      startTokenIndex: frame.startTokenIndex + tokenOffset,
+      endTokenIndex: frame.endTokenIndex + tokenOffset,
       characterId: line.characterId,
       characterSide: line.side,
       characterAssetUri: line.assetUri
     }));
     frames.push(...lineFrames);
+    tokenOffset += tokens.length;
   });
 
   return frames;

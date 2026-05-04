@@ -15,11 +15,15 @@ export function groupTokens(tokens: Token[], chunkSize = 3): Frame[] {
 
   while (index < tokens.length) {
     const slice = tokens.slice(index, index + size);
+    const startTokenIndex = index;
+    const endTokenIndex = index + slice.length - 1;
 
     frames.push({
       index: frames.length,
       tokens: slice,
-      text: slice.map((token) => token.text).join(' ')
+      text: slice.map((token) => token.text).join(' '),
+      startTokenIndex,
+      endTokenIndex
     });
 
     index += size;

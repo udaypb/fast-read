@@ -6,14 +6,6 @@ export type ControlHandlers = {
   onWpmChange: (wpm: number) => void;
 };
 
-function stepRange(input: HTMLInputElement, direction: 'up' | 'down'): void {
-  if (direction === 'up') {
-    input.stepUp();
-  } else {
-    input.stepDown();
-  }
-}
-
 export class Controls {
   private root: HTMLElement;
   private playButton: HTMLButtonElement;
@@ -59,32 +51,40 @@ export class Controls {
     const wpmWrap = document.createElement('div');
     wpmWrap.className = 'controls-slider';
 
-    const wpmRow = document.createElement('div');
-    wpmRow.className = 'controls-slider-row';
-
-    const wpmMinus = document.createElement('button');
-    wpmMinus.type = 'button';
-    wpmMinus.className = 'control-button control-step';
-    wpmMinus.textContent = '-';
-
     this.wpmInput = document.createElement('input');
     this.wpmInput.type = 'range';
+    this.wpmInput.className = 'controls-range-input';
     this.wpmInput.min = '150';
     this.wpmInput.max = '700';
     this.wpmInput.step = '25';
     this.wpmInput.value = String(initialWpm);
 
-    const wpmPlus = document.createElement('button');
-    wpmPlus.type = 'button';
-    wpmPlus.className = 'control-button control-step';
-    wpmPlus.textContent = '+';
-
     this.wpmValue = document.createElement('div');
     this.wpmValue.className = 'controls-wpm';
     this.wpmValue.textContent = `${initialWpm} WPM`;
 
-    wpmRow.append(wpmMinus, this.wpmInput, wpmPlus);
-    wpmWrap.append(wpmRow, this.wpmValue);
+    const wpmHeader = document.createElement('div');
+    wpmHeader.className = 'controls-slider-meta';
+
+    const wpmLabel = document.createElement('div');
+    wpmLabel.className = 'controls-slider-label';
+    wpmLabel.textContent = 'Speed';
+
+    wpmHeader.append(wpmLabel, this.wpmValue);
+
+    const wpmShell = document.createElement('div');
+    wpmShell.className = 'slider-shell';
+
+    const wpmScale = document.createElement('div');
+    wpmScale.className = 'slider-scale';
+    wpmScale.innerHTML = '<span>Min</span><span>Mid</span><span>Max</span>';
+
+    const wpmRow = document.createElement('div');
+    wpmRow.className = 'controls-slider-row slider-row';
+    wpmRow.append(this.wpmInput);
+
+    wpmShell.append(wpmScale, wpmRow);
+    wpmWrap.append(wpmHeader, wpmShell);
 
     this.sliders.append(wpmWrap);
 
@@ -117,14 +117,7 @@ export class Controls {
     this.wpmInput.addEventListener('input', () => {
       this.updateWpm();
     });
-    wpmMinus.addEventListener('click', () => {
-      stepRange(this.wpmInput, 'down');
-      this.updateWpm();
-    });
-    wpmPlus.addEventListener('click', () => {
-      stepRange(this.wpmInput, 'up');
-      this.updateWpm();
-    });
+    this.setWpm(initialWpm);
   }
 
   bind(handlers: ControlHandlers): void {
@@ -138,6 +131,8 @@ export class Controls {
   setWpm(wpm: number): void {
     this.wpmInput.value = String(wpm);
     this.wpmValue.textContent = `${wpm} WPM`;
+    const progress = ((wpm - 150) / (700 - 150)) * 100;
+    this.wpmInput.style.setProperty('--slider-progress', `${progress}%`);
   }
 
   setFocusMode(enabled: boolean): void {

@@ -37,7 +37,9 @@ function toFrames(tokens: Token[], chunkSize: number): Frame[] {
     frames.push({
       index: frames.length,
       tokens: slice,
-      text: frameText(slice)
+      text: frameText(slice),
+      startTokenIndex: i,
+      endTokenIndex: i + slice.length - 1
     });
   }
   return frames;
