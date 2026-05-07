@@ -595,9 +595,10 @@ body.mode-standard .controls-stack {
 
 .controls-transport {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
   justify-content: center;
+  width: 100%;
 }
 
 .controls-sliders {
@@ -618,6 +619,27 @@ body.mode-standard .controls-stack {
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.controls-transport .control-button {
+  flex: 1;
+  text-align: center;
+  font-size: 1.15rem;
+  padding: 10px 8px;
+  min-height: 40px;
+}
+
+.controls-transport .control-primary {
+  flex: 1.8;
+  font-size: 1.25rem;
+  min-height: 44px;
+  box-shadow: 0 4px 14px rgba(249, 226, 176, 0.25);
+}
+
+.controls-transport .control-primary:hover {
+  box-shadow: 0 6px 20px rgba(249, 226, 176, 0.4);
 }
 
 .control-button:hover {
@@ -662,12 +684,15 @@ body.mode-standard .controls-stack {
 }
 
 .controls-slider input[type='range'] {
-  width: 240px;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .controls-slider-row input[type='range'] {
+  flex: 1;
+  min-width: 0;
   width: 100%;
-  min-width: 180px;
 }
 
 .controls-wpm,
@@ -700,7 +725,7 @@ body.mode-standard .controls-stack {
 }
 
 .slider-shell {
-  width: min(320px, 100%);
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -802,7 +827,6 @@ body.mode-standard .controls-stack {
 
 .seek-bar-input {
   width: 100%;
-  max-width: 320px;
   accent-color: var(--accent);
 }
 
@@ -839,21 +863,24 @@ body.mode-standard .controls-stack {
 
 .import-root {
   position: fixed;
-  top: max(24px, env(safe-area-inset-top));
+  /* Default: centered vertically — empty/landing state */
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -40%);
   width: auto;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   z-index: 12000;
-  /* Higher than settings */
   transition: all 0.4s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
+/* Once content is loaded, move to a small persistent pill at the top */
 .import-root--minimized {
+  top: max(20px, env(safe-area-inset-top));
   left: 50%;
-  right: auto;
-  transform: translateX(-50%) scale(0.92);
+  transform: translateX(-50%) scale(1);
 }
 
 .import-root--hidden {
@@ -861,30 +888,38 @@ body.mode-standard .controls-stack {
 }
 
 .import-button {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(15, 15, 15, 0.75);
-  color: var(--text);
-  padding: 12px 24px;
+  border: 1px solid rgba(249, 226, 176, 0.28);
+  background: rgba(10, 10, 10, 0.88);
+  color: var(--accent);
+  padding: 16px 36px;
   border-radius: 999px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: transform 0.2s ease, border 0.2s ease, background 0.2s ease, padding 0.3s ease;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease,
+    padding 0.35s cubic-bezier(0.2, 0, 0.2, 1), font-size 0.35s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .import-root--minimized .import-button {
-  padding: 8px 16px;
-  font-size: 0.8rem;
-  box-shadow: none;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #f5f5f5;
+  background: rgba(10, 10, 10, 0.82);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.02em;
 }
 
 .import-button:hover {
-  transform: translateY(-2px);
-  border-color: rgba(249, 226, 176, 0.45);
-  background: rgba(20, 20, 20, 0.85);
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(249, 226, 176, 0.5);
+  background: rgba(18, 18, 18, 0.92);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(249, 226, 176, 0.1);
 }
 
 .import-overlay {
@@ -1231,8 +1266,9 @@ body.mode-standard .controls-stack {
 .reel-group {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   scroll-snap-align: start;
 }
 
@@ -1242,8 +1278,8 @@ body.mode-standard .controls-stack {
 
 .reel-group-cards {
   display: flex;
-  align-items: center;
-  gap: 18px;
+  align-items: stretch;
+  gap: 10px;
 }
 
 .reel-card-cooking {
@@ -1298,17 +1334,15 @@ body.mode-standard .controls-stack {
 
 .reel-group-label {
   flex-shrink: 0;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--accent);
-  padding: 4px 12px;
+  padding: 2px 10px;
   border-left: 2px solid var(--accent);
-  margin-right: -8px;
   white-space: nowrap;
-  scroll-snap-align: center;
-  opacity: 0.8;
+  opacity: 0.75;
 }
 
 .reel-group-label--active {
@@ -1410,23 +1444,20 @@ body.mode-standard .controls-stack {
   }
 
   .control-button {
-    padding: 8px 10px;
-    font-size: 0.8rem;
+    padding: 8px 8px;
+    font-size: 0.78rem;
   }
 
   .control-button.control-primary {
-    padding: 8px 14px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
   .controls-transport {
-    gap: 8px;
+    gap: 6px;
   }
 
   .controls-slider input[type='range'] {
     width: 100%;
-    /* Fill available space */
-    max-width: 200px;
   }
 
   .controls-slider-row {
@@ -1438,8 +1469,8 @@ body.mode-standard .controls-stack {
   }
 
   .import-root {
-    top: max(16px, env(safe-area-inset-top));
-    margin-bottom: 32px;
+    /* On mobile, keep the same centered default; no top override needed */
+    transform: translate(-50%, -44%);
   }
 
   .import-root--minimized {
@@ -1450,7 +1481,7 @@ body.mode-standard .controls-stack {
   }
 
   .import-button {
-    padding: 12px 24px;
+    padding: 14px 28px;
     font-size: 0.9rem;
   }
 
@@ -1807,13 +1838,13 @@ body.mode-standard .controls-stack {
 }
 
 .reels-player-content--preview-expanded .reels-chunk-controls {
-  top: calc(50% + min(35vh, 300px) + 8px);
+  top: calc(50% + min(35vh, 300px) + 12px);
   bottom: auto;
   z-index: 140;
 }
 
 .reels-player-content--preview-expanded .reels-compact-play-btn {
-  top: calc(50% + min(35vh, 300px) + 82px);
+  top: calc(50% + min(35vh, 300px) + 88px);
   bottom: auto;
   z-index: 140;
 }
@@ -1821,7 +1852,8 @@ body.mode-standard .controls-stack {
 .reels-chunk-controls {
   position: absolute;
   left: 50%;
-  top: calc(50% + 78px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  top: auto;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -1830,11 +1862,11 @@ body.mode-standard .controls-stack {
   width: min(288px, calc(100vw - 64px));
   padding: 10px 12px;
   border-radius: 20px;
-  background: rgba(9, 9, 9, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(9, 9, 9, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 130;
   pointer-events: auto;
 }
@@ -1881,52 +1913,41 @@ body.mode-standard .controls-stack {
 .reels-compact-play-btn {
   position: absolute;
   left: 50%;
-  top: calc(50% + 194px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  top: auto;
   transform: translateX(-50%);
-  min-width: 68px;
-  height: 34px;
+  width: 56px;
+  height: 56px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  background: rgba(10, 10, 10, 0.6);
-  color: #fff;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a1a1a;
+  font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
   z-index: 130;
   opacity: 1;
   visibility: visible;
   -webkit-appearance: none;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease,
-    border-color 0.15s ease;
+  box-shadow: 0 6px 20px rgba(249, 226, 176, 0.35);
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .reels-compact-play-btn:hover {
-  background: rgba(249, 226, 176, 0.95);
-  color: #121212;
-  border-color: rgba(249, 226, 176, 0.95);
-  transform: translateX(-50%) scale(1.03);
+  background: #fdf0d5;
+  transform: translateX(-50%) scale(1.07);
+  box-shadow: 0 8px 28px rgba(249, 226, 176, 0.5);
 }
 
-/* Keep reel controls below reading text on small iPhone-sized screens */
-@media (max-width: 430px), (max-height: 760px) {
-  .reels-chunk-controls {
-    top: auto;
-    bottom: calc(118px + env(safe-area-inset-bottom));
-    padding: 10px 12px;
-  }
-
-  .reels-compact-play-btn {
-    top: auto;
-    bottom: calc(62px + env(safe-area-inset-bottom));
-  }
+.reels-compact-play-btn:active {
+  transform: translateX(-50%) scale(0.94);
 }
+
+/* Bottom-anchored controls are already responsive; no override needed here */
 
 .reels-player-bar {
   position: absolute;
@@ -1989,9 +2010,20 @@ body.mode-standard .controls-stack {
 
 .reels-progress-container,
 .reels-frame-counter,
-.reels-status-bar,
 .reels-center-indicator {
   pointer-events: none;
+}
+
+/* Status pill is interactive — clicking it opens the reel browser */
+.reels-status-bar {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.2s ease;
+}
+
+.reels-status-bar:hover {
+  border-color: rgba(249, 226, 176, 0.3);
+  background: rgba(28, 28, 28, 0.88);
 }
 
 /* Transitions: Hide transport in Settings Panel when in Reel Mode content */
@@ -2167,44 +2199,71 @@ body.mode-standard .controls-stack .settings-button {
 
 .reels-delete-btn {
   position: absolute;
-  top: 22px;
-  right: 22px;
+  bottom: 44px;
+  left: 24px;
+  top: auto;
+  right: auto;
+  width: 48px;
+  height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 78px;
-  height: 38px;
-  padding: 0 14px;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  background: rgba(10, 10, 10, 0.48);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  border-radius: 50%;
+  background: rgba(12, 12, 12, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 1rem;
   cursor: pointer;
-  z-index: 10002;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
-  transition: opacity 0.24s ease, transform 0.24s ease, background 0.24s ease;
+  z-index: 10001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.24s ease, transform 0.24s ease, background 0.24s ease, border-color 0.24s ease;
 }
 
 .reels-delete-btn:hover {
-  background: rgba(140, 20, 20, 0.46);
-  transform: translateY(-1px);
+  background: rgba(160, 30, 30, 0.55);
+  border-color: rgba(255, 80, 80, 0.4);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.reels-delete-btn:active {
+  transform: scale(0.95);
 }
 
 .reels-delete-btn:disabled,
 .reels-delete-btn--hidden {
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-4px);
+  transform: translateY(4px);
 }
 
-/* Push button up when settings open in Reel Mode */
-.reels-player-content.settings-open .settings-button {
+/* Push bottom buttons up when settings panel opens in Reel Mode */
+.reels-player-content.settings-open .settings-button,
+.reels-player-content.settings-open .reels-delete-btn {
   transform: translateY(calc(-1 * var(--panel-height, 400px) - 20px));
+}
+
+.reels-player-content.settings-open .reels-compact-play-btn,
+.reels-player-content.settings-open .reels-chunk-controls {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+/* Empty state: hide all playback controls so they don't clutter the landing view */
+.reels-player-content.reels-empty-state .reels-compact-play-btn,
+.reels-player-content.reels-empty-state .reels-chunk-controls,
+.reels-player-content.reels-empty-state .reels-delete-btn,
+.reels-player-content.reels-empty-state .settings-button,
+.reels-player-content.reels-empty-state .reels-progress-container,
+.reels-player-content.reels-empty-state .reels-frame-counter,
+.reels-player-content.reels-empty-state .reels-status-bar {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease;
 }
 
 .settings-button:hover {
@@ -2222,13 +2281,15 @@ body.mode-portrait {
 }
 
 .reels-player-text--empty {
-  font-size: 2rem !important;
-  font-weight: 700 !important;
-  color: var(--reading-text-color) !important;
-  text-shadow: var(--reading-text-shadow) !important;
-  letter-spacing: -0.02em;
+  font-size: clamp(1.1rem, 4vw, 1.5rem) !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  text-shadow: none !important;
+  letter-spacing: 0.01em;
   text-align: center;
-  max-width: 80%;
+  max-width: 72%;
+  line-height: 1.5 !important;
+  white-space: normal !important;
 }
 
 /* Settings Panel - Unified panel for all settings */
@@ -2368,14 +2429,56 @@ body.mode-portrait .settings-reel-section {
 
 .settings-reel-previews {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 2px 4px 6px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.settings-reel-previews::-webkit-scrollbar {
+  width: 3px;
+}
+
+.settings-reel-previews::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.18);
+  border-radius: 999px;
+}
+
+.settings-reel-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-reel-group-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-reel-group-label--active {
+  color: var(--accent);
+  border-bottom-color: rgba(249, 226, 176, 0.2);
+}
+
+.settings-reel-group-cards {
+  display: flex;
+  flex-wrap: nowrap;
   gap: 10px;
   overflow-x: auto;
-  padding: 2px 2px 6px;
+  padding-bottom: 4px;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
 }
 
-.settings-reel-previews::-webkit-scrollbar {
+.settings-reel-group-cards::-webkit-scrollbar {
   display: none;
 }
 
@@ -2868,12 +2971,13 @@ body.mode-portrait .settings-reel-section {
 
 .reels-status-bar {
   position: absolute;
-  bottom: 24px;
+  top: 76px;
+  bottom: auto;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(20, 20, 20, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 8px 16px;
+  padding: 6px 14px;
   border-radius: 999px;
   display: flex;
   align-items: center;
@@ -2882,6 +2986,8 @@ body.mode-portrait .settings-reel-section {
   pointer-events: none;
   transition: opacity 0.3s ease, transform 0.3s ease;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  white-space: nowrap;
 }
 
 .reels-status-text {

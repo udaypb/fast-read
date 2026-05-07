@@ -26,22 +26,29 @@ export class Controls {
     const restartButton = document.createElement('button');
     restartButton.className = 'control-button';
     restartButton.type = 'button';
-    restartButton.textContent = 'Restart';
+    restartButton.textContent = '↺';
+    restartButton.title = 'Restart';
+    restartButton.setAttribute('aria-label', 'Restart');
 
     const rewindButton = document.createElement('button');
     rewindButton.className = 'control-button';
     rewindButton.type = 'button';
-    rewindButton.textContent = 'Rewind';
+    rewindButton.textContent = '«';
+    rewindButton.title = 'Rewind';
+    rewindButton.setAttribute('aria-label', 'Rewind');
 
     this.playButton = document.createElement('button');
     this.playButton.className = 'control-button control-primary';
     this.playButton.type = 'button';
-    this.playButton.textContent = 'Play';
+    this.playButton.textContent = '▶';
+    this.playButton.title = 'Play / Pause';
 
     const forwardButton = document.createElement('button');
     forwardButton.className = 'control-button';
     forwardButton.type = 'button';
-    forwardButton.textContent = 'Forward';
+    forwardButton.textContent = '»';
+    forwardButton.title = 'Forward';
+    forwardButton.setAttribute('aria-label', 'Forward');
 
     this.transport.append(restartButton, rewindButton, this.playButton, forwardButton);
 
@@ -125,7 +132,7 @@ export class Controls {
   }
 
   setPlaying(isPlaying: boolean): void {
-    this.playButton.textContent = isPlaying ? 'Pause' : 'Play';
+    this.playButton.textContent = isPlaying ? '⏸' : '▶';
   }
 
   setWpm(wpm: number): void {

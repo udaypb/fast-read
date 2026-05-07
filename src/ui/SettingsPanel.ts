@@ -1,6 +1,13 @@
 import { backgroundCatalog } from './backgrounds/catalog';
 import type { Reel } from '../api/types';
 
+export type ReelGroup = {
+    docId: string;
+    label: string;
+    reels: Reel[];
+    isActive: boolean;
+};
+
 export type SettingsPanelHandlers = {
     onStyleChange: (category: string, specificId?: string) => void;
     onPlayPause?: () => void;
@@ -28,6 +35,7 @@ export class SettingsPanel {
     private categoryTabs: HTMLElement[] = [];
     private previewsContainer: HTMLElement;
     private reels: Reel[] = [];
+    private groups: ReelGroup[] = [];
     private activeReelId: string | null = null;
     private reelPreviewsContainer: HTMLElement;
 
@@ -256,7 +264,12 @@ export class SettingsPanel {
     private renderReelPreviews(): void {
         this.reelPreviewsContainer.innerHTML = '';
 
-        if (this.reels.length === 0) {
+        // Use groups if available, otherwise fall back to flat reels list
+        const groups = this.groups.length > 0
+            ? this.groups
+            : (this.reels.length > 0 ? [{ docId: '', label: '', reels: this.reels, isActive: true }] : []);
+
+        if (groups.length === 0) {
             const msg = document.createElement('div');
             msg.className = 'settings-reel-empty';
             msg.textContent = 'No reels yet';
@@ -264,50 +277,81 @@ export class SettingsPanel {
             return;
         }
 
-        this.reels.forEach((reel) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'settings-reel-card';
-            btn.dataset.reelId = reel.reelId;
-            if (this.activeReelId === reel.reelId) {
-                btn.classList.add('settings-reel-card--active');
+        groups.forEach((group) => {
+            const groupEl = document.createElement('div');
+            groupEl.className = 'settings-reel-group';
+            if (group.isActive) groupEl.classList.add('settings-reel-group--active');
+
+            // Group label (only shown when there are multiple groups or a non-empty label)
+            if (group.label) {
+                const labelEl = document.createElement('div');
+                labelEl.className = 'settings-reel-group-label';
+                if (group.isActive) labelEl.classList.add('settings-reel-group-label--active');
+                labelEl.textContent = group.label;
+                groupEl.appendChild(labelEl);
             }
 
-            const title = document.createElement('div');
-            title.className = 'settings-reel-title';
-            title.textContent = reel.title || `Reel ${reel.index + 1}`;
+            const cardsRow = document.createElement('div');
+            cardsRow.className = 'settings-reel-group-cards';
 
-            const deleteBtn = document.createElement('button');
-            deleteBtn.type = 'button';
-            deleteBtn.className = 'settings-reel-delete-btn';
-            deleteBtn.setAttribute('aria-label', `Delete ${reel.title || `Reel ${reel.index + 1}`}`);
-            deleteBtn.innerHTML = `
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M9 3.75h6a1.5 1.5 0 0 1 1.5 1.5v.75H20a.75.75 0 0 1 0 1.5h-1.03l-.9 11.02A2.25 2.25 0 0 1 15.83 20.5H8.17a2.25 2.25 0 0 1-2.24-1.98L5.03 7.5H4a.75.75 0 0 1 0-1.5h3.5v-.75A1.5 1.5 0 0 1 9 3.75Zm6 2.25v-.75h-6V6h6ZM6.53 7.5l.89 10.9a.75.75 0 0 0 .75.6h7.66a.75.75 0 0 0 .75-.6l.89-10.9H6.53Zm3.22 2.25a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Zm4.5 0a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Z"/>
-                </svg>
-            `;
-            deleteBtn.addEventListener('click', (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                this.handlers?.onReelDelete?.(reel);
-            });
+            if (group.reels.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'settings-reel-empty';
+                empty.textContent = 'Processing…';
+                cardsRow.appendChild(empty);
+            } else {
+                group.reels.forEach((reel) => {
+                    cardsRow.appendChild(this.createReelCard(reel));
+                });
+            }
 
-            btn.append(deleteBtn, title);
-            btn.addEventListener('click', () => {
-                this.activeReelId = reel.reelId;
-                this.updateReelPreviewState();
-                this.handlers?.onReelSelect?.(reel);
-            });
-
-            this.reelPreviewsContainer.appendChild(btn);
+            groupEl.appendChild(cardsRow);
+            this.reelPreviewsContainer.appendChild(groupEl);
         });
     }
 
+    private createReelCard(reel: Reel): HTMLElement {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'settings-reel-card';
+        btn.dataset.reelId = reel.reelId;
+        if (this.activeReelId === reel.reelId) {
+            btn.classList.add('settings-reel-card--active');
+        }
+
+        const title = document.createElement('div');
+        title.className = 'settings-reel-title';
+        title.textContent = reel.title || `Reel ${reel.index + 1}`;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'settings-reel-delete-btn';
+        deleteBtn.setAttribute('aria-label', `Delete ${reel.title || `Reel ${reel.index + 1}`}`);
+        deleteBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M9 3.75h6a1.5 1.5 0 0 1 1.5 1.5v.75H20a.75.75 0 0 1 0 1.5h-1.03l-.9 11.02A2.25 2.25 0 0 1 15.83 20.5H8.17a2.25 2.25 0 0 1-2.24-1.98L5.03 7.5H4a.75.75 0 0 1 0-1.5h3.5v-.75A1.5 1.5 0 0 1 9 3.75Zm6 2.25v-.75h-6V6h6ZM6.53 7.5l.89 10.9a.75.75 0 0 0 .75.6h7.66a.75.75 0 0 0 .75-.6l.89-10.9H6.53Zm3.22 2.25a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Zm4.5 0a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Z"/>
+            </svg>
+        `;
+        deleteBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.handlers?.onReelDelete?.(reel);
+        });
+
+        btn.append(deleteBtn, title);
+        btn.addEventListener('click', () => {
+            this.activeReelId = reel.reelId;
+            this.updateReelPreviewState();
+            this.handlers?.onReelSelect?.(reel);
+        });
+
+        return btn;
+    }
+
     private updateReelPreviewState(): void {
-        const cards = this.reelPreviewsContainer.querySelectorAll('.settings-reel-card');
+        const cards = this.reelPreviewsContainer.querySelectorAll<HTMLElement>('.settings-reel-card');
         cards.forEach((card) => {
-            const isActive = (card as HTMLElement).dataset.reelId === this.activeReelId;
-            card.classList.toggle('settings-reel-card--active', isActive);
+            card.classList.toggle('settings-reel-card--active', card.dataset.reelId === this.activeReelId);
         });
     }
 
@@ -476,8 +520,26 @@ export class SettingsPanel {
         this.renderPreviews();
     }
 
+    public setGroups(groups: ReelGroup[], activeReelId?: string | null): void {
+        this.groups = groups;
+        // Keep flat reels list synced to the active group for backwards compat
+        const active = groups.find(g => g.isActive) ?? groups[0];
+        this.reels = active?.reels ?? [];
+        if (activeReelId !== undefined) {
+            this.activeReelId = activeReelId ?? null;
+        }
+        this.renderReelPreviews();
+        // Scroll the active group into view within its own container only (not the panel)
+        const activeGroup = this.reelPreviewsContainer.querySelector<HTMLElement>('.settings-reel-group--active');
+        if (activeGroup && this.reelPreviewsContainer.scrollHeight > this.reelPreviewsContainer.clientHeight) {
+            this.reelPreviewsContainer.scrollTop = activeGroup.offsetTop - 8;
+        }
+    }
+
     public setReels(reels: Reel[], options?: { activeReelId?: string; align?: 'start' | 'end' }): void {
         this.reels = reels;
+        // Clear groups so the flat list is used
+        this.groups = [];
         if (options?.activeReelId !== undefined) {
             this.activeReelId = options.activeReelId;
         }

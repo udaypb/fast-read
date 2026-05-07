@@ -18,7 +18,7 @@ import { Background } from './ui/Background';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { ImportDialog } from './ui/ImportDialog';
 import { ReelRail } from './ui/ReelRail';
-import { SettingsPanel } from './ui/SettingsPanel';
+import { SettingsPanel, type ReelGroup } from './ui/SettingsPanel';
 import { ReelsPlayer, DisplayMode } from './ui/ReelsPlayer';
 import { SettingsButton } from './ui/SettingsButton';
 import { backgroundCatalog, getBackgroundDefinition } from './ui/backgrounds/catalog';
@@ -167,6 +167,9 @@ reelsPlayer.bind({
   onDelete: () => {
     void deleteActiveReelGroup();
   },
+  onStatusClick: () => {
+    settingsPanel.open();
+  },
   onActiveReelChange: (reelId: string) => {
     // When the user scrolls manually, sync the rest of the app
     const reel = reelState.currentPage?.reels.find(r => r.reelId === reelId);
@@ -253,8 +256,12 @@ function syncDeleteAvailability(): void {
 
 function syncRailFromSessions(options?: { currentUploadId?: string | null; activeReelId?: string | null }): void {
   const sessions = getOrderedSessions();
+  const activeDocId = options?.currentUploadId ?? reelState.docId;
+  const activeReelId = options?.activeReelId ?? reelState.activeReelId;
+
   if (sessions.length === 0) {
     reelRail.setUploads([]);
+    settingsPanel.setGroups([], null);
     return;
   }
 
@@ -266,10 +273,19 @@ function syncRailFromSessions(options?: { currentUploadId?: string | null; activ
       reels: session.reels
     })),
     {
-      currentUploadId: options?.currentUploadId ?? reelState.docId,
-      activeReelId: options?.activeReelId ?? reelState.activeReelId
+      currentUploadId: activeDocId,
+      activeReelId: activeReelId
     }
   );
+
+  // Push all groups to settings panel so the reels section is always current
+  const groups: ReelGroup[] = sessions.map((session) => ({
+    docId: session.docId,
+    label: session.label,
+    reels: session.reels,
+    isActive: session.docId === activeDocId
+  }));
+  settingsPanel.setGroups(groups, activeReelId);
 }
 
 function togglePlaybackFromStartIfEnded(): void {
@@ -332,16 +348,15 @@ function restoreSession(session: StoredReelSession): void {
     nextOffset: null
   };
 
-  settingsPanel.setReels(reels, { activeReelId: session.activeReelId ?? undefined, align: 'start' });
-
   reelsPlayer.clearReels();
   reels.forEach((reel) => reelsPlayer.addReel(reel));
   reelsPlayer.updateStatus(reels.length, true);
   reelsPlayer.setLoading(false);
   reelRail.setLoading(false);
 
-  importDialog.setMinimized(false);
-  importDialog.setButtonText('Upload another PDF or text');
+  // Content exists — collapse the import button to a small persistent pill
+  importDialog.setMinimized(true);
+  importDialog.setButtonText('+ Add more');
 
   const active = reels.find((reel) => reel.reelId === session.activeReelId) ?? reels[0];
   if (active) {
@@ -598,8 +613,14 @@ async function ingestDocument(
   reelRail.setCooking(false);
   reelsPlayer.setLoading(true, options.loadingText);
   reelsPlayer.updateStatus(0, false);
-  importDialog.setMinimized(false);
-  importDialog.setButtonText('Upload another PDF or text');
+  // If content already exists keep the button minimized during re-upload; otherwise center it
+  if (reelState.docId) {
+    importDialog.setMinimized(true);
+    importDialog.setButtonText('Processing…');
+  } else {
+    importDialog.setMinimized(false);
+    importDialog.setButtonText('Processing…');
+  }
 
   try {
     const { docId } = await createDoc();
@@ -635,7 +656,6 @@ async function ingestDocument(
     reelRail.show();
     syncRailFromSessions({ currentUploadId: docId, activeReelId: null });
     reelRail.setCooking(true);
-    settingsPanel.setReels([]);
     reelsPlayer.clearReels();
     showEmptyReel();
 
@@ -712,6 +732,9 @@ async function finalizeStream(docId: string): Promise<void> {
     return;
   }
 
+  importDialog.setMinimized(true);
+  importDialog.setButtonText('+ Add more');
+
   persistCurrentSession(docId, reelState.currentPage?.reels ?? [], reelState.activeReelId);
 }
 
@@ -766,7 +789,6 @@ function syncDocReels(docId: string, incomingReels: Reel[]): void {
 
   reelRail.show();
   reelRail.setLoading(false);
-  settingsPanel.setReels(mergedReels, { activeReelId: reelState.activeReelId ?? undefined, align: 'end' });
   reelsPlayer.setLoading(false);
 
   if (mergedReels.length > 0 && !reelState.activeReelId) {
@@ -779,6 +801,9 @@ function syncDocReels(docId: string, incomingReels: Reel[]): void {
   reelsPlayer.updateStatus(mergedReels.length, false);
 
   if (!reelState.activeReelId && mergedReels[0]) {
+    // First reel arrived — collapse the import button to its minimal pill form
+    importDialog.setMinimized(true);
+    importDialog.setButtonText('+ Add more');
     selectReel(mergedReels[0], true);
   }
 }
@@ -891,7 +916,6 @@ function showEmptyReel(): void {
   reelsPlayer.showEmptyState(true, {
     message: 'No reels yet — upload a PDF or paste text to get started.'
   });
-  settingsPanel.setReels([]);
   applyBackgroundAndTone(manualBackgroundId || 'intro');
   reader.pause();
 }
@@ -951,7 +975,6 @@ async function loadReelPage(offset: number, align: 'start' | 'end'): Promise<voi
       currentUploadId: reelState.docId,
       activeReelId: reelState.activeReelId
     });
-    settingsPanel.setReels(page.reels, { activeReelId: reelState.activeReelId || undefined, align });
     reelRail.setLoading(false);
 
     if (!reelState.activeReelId && page.reels[0]) {
@@ -974,7 +997,6 @@ function resetReelState(docId: string): void {
   reelState.currentPage = null;
   reelCache.clear();
   reelRequests.clear();
-  settingsPanel.setReels([]);
   reelsPlayer.clearReels();
 }
 

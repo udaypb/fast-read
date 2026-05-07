@@ -45,6 +45,7 @@ export class ReelsPlayer {
     private compactPlayBtn: HTMLButtonElement;
     private deleteBtn: HTMLButtonElement;
     private onDelete?: () => void;
+    private onStatusClick?: () => void;
     private onPreviewExpandChange?: (expanded: boolean) => void;
     private expandedReelId: string | null = null;
 
@@ -88,6 +89,7 @@ export class ReelsPlayer {
         this.statusText.className = 'reels-status-text';
         this.statusEl.appendChild(this.statusDot);
         this.statusEl.appendChild(this.statusText);
+        this.statusEl.addEventListener('click', () => this.onStatusClick?.());
 
         // Append loader and status bar directly to contentEl
         this.contentEl.appendChild(this.loaderEl);
@@ -164,7 +166,9 @@ export class ReelsPlayer {
         this.deleteBtn = document.createElement('button');
         this.deleteBtn.type = 'button';
         this.deleteBtn.className = 'reels-delete-btn reels-delete-btn--hidden';
-        this.deleteBtn.textContent = 'Delete';
+        this.deleteBtn.innerHTML = '✕';
+        this.deleteBtn.title = 'Delete reel group';
+        this.deleteBtn.setAttribute('aria-label', 'Delete reel group');
         this.deleteBtn.addEventListener('click', (event) => {
             event.stopPropagation();
             this.onDelete?.();
@@ -293,6 +297,8 @@ export class ReelsPlayer {
         }
 
         const activeScreen = this.activeReelId ? this.screens.get(this.activeReelId) : null;
+
+        this.contentEl.classList.toggle('reels-empty-state', show);
 
         if (show) {
             if (activeScreen) {
@@ -532,6 +538,7 @@ export class ReelsPlayer {
         onWpmChange?: (wpm: number) => void;
         onActiveReelChange?: (reelId: string) => void;
         onDelete?: () => void;
+        onStatusClick?: () => void;
         onPreviewExpandChange?: (expanded: boolean) => void;
     }): void {
         this.onPlayPause = handler.onPlayPause;
@@ -539,6 +546,7 @@ export class ReelsPlayer {
         this.onWpmChange = handler.onWpmChange;
         this.onActiveReelChange = handler.onActiveReelChange;
         this.onDelete = handler.onDelete;
+        this.onStatusClick = handler.onStatusClick;
         this.onPreviewExpandChange = handler.onPreviewExpandChange;
     }
 
