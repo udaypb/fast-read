@@ -686,8 +686,13 @@ class ReelScreen {
         this.previewEl.addEventListener('touchstart', stopPagerPropagation, { passive: true });
         this.previewEl.addEventListener('touchmove', stopPagerPropagation, { passive: true });
 
+        // Header row: holds the expand button so it pushes content down, no overlapping.
+        const windowHeader = document.createElement('div');
+        windowHeader.className = 'reels-player-window-header';
+        windowHeader.append(this.expandBtn);
+
         this.textClipEl.append(this.textEl);
-        this.textWindow.append(topBar, this.textClipEl, this.previewEl, bottomBar, this.expandBtn);
+        this.textWindow.append(topBar, windowHeader, this.textClipEl, this.previewEl, bottomBar);
 
         this.characterOverlay = document.createElement('div');
         this.characterOverlay.className = 'reel-character-overlay';

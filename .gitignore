@@ -63,3 +63,7 @@ logs/
 tmp/
 .cache/
 
+<<<<<<< HEAD
+=======
+.git_new
+>>>>>>> b347926 (Polish UI, improve request)

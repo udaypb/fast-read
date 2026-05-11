@@ -1127,7 +1127,7 @@ function persistCurrentSession(docId: string, reels: Reel[], activeReelId: strin
   const cachedSession = sessionCache.get(docId);
   const session = {
     docId,
-    label: cachedSession?.label || reels[0]?.title || `Upload ${sessionCache.size}`,
+    label: cachedSession?.label || `Upload ${sessionCache.size}`,
     reels,
     activeReelId,
     createdAt: activeSessionCreatedAt,

@@ -277,13 +277,15 @@ export class SettingsPanel {
             return;
         }
 
+        const showLabels = groups.length > 1;
+
         groups.forEach((group) => {
             const groupEl = document.createElement('div');
             groupEl.className = 'settings-reel-group';
             if (group.isActive) groupEl.classList.add('settings-reel-group--active');
 
-            // Group label (only shown when there are multiple groups or a non-empty label)
-            if (group.label) {
+            // Only show labels when there are multiple groups (avoids "Reel 1" label + "Reel 1" card redundancy)
+            if (showLabels && group.label) {
                 const labelEl = document.createElement('div');
                 labelEl.className = 'settings-reel-group-label';
                 if (group.isActive) labelEl.classList.add('settings-reel-group-label--active');

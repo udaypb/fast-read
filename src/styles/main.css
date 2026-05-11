@@ -1643,8 +1643,8 @@ body.mode-standard .controls-stack {
   max-width: calc(100% - 56px);
   height: 190px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
   z-index: 3;
   overflow: hidden;
   box-sizing: border-box;
@@ -1691,27 +1691,36 @@ body.mode-standard .controls-stack {
   pointer-events: none;
 }
 
+/* Header row inside the reader window — button lives here, pushes text down */
+.reels-player-window-header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 6px 8px 0;
+}
+
 .reels-player-expand-btn {
-  position: absolute;
-  top: -40px;
-  right: 10px;
-  min-width: 72px;
-  height: 28px;
-  padding: 0 12px;
+  /* In-flow button inside the header row — no absolute positioning,
+     no overlapping, no z-index fights. */
+  min-width: 64px;
+  height: 26px;
+  padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(10, 10, 10, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(10, 10, 10, 0.52);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   color: rgba(255, 255, 255, 0.88);
   font-family: var(--font-ui);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   pointer-events: auto;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .reels-player-expand-btn:hover {
@@ -1726,11 +1735,13 @@ body.mode-standard .controls-stack {
 }
 
 .reels-player-text-clip {
+  flex: 1;               /* fill remaining space below the header */
+  min-height: 0;         /* allow shrinking in flex column */
   width: 100%;
   max-width: 100%;
   padding: 0 32px;
   display: flex;
-  align-items: center;
+  align-items: center;   /* center text vertically within available space */
   justify-content: center;
   overflow: hidden;
   box-sizing: border-box;
@@ -1738,9 +1749,10 @@ body.mode-standard .controls-stack {
 
 .reels-player-preview {
   display: none;
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 100%;
-  padding: 34px 30px 30px;
+  padding: 16px 30px 30px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
@@ -1778,34 +1790,34 @@ body.mode-standard .controls-stack {
 
 .reel-screen--expanded .reels-player-title-row {
   opacity: 0;
+  pointer-events: none;
 }
 
-.reel-screen--expanded .reels-player-title {
-  opacity: 0;
+/* In expanded state: button stays in the header row, just grows slightly */
+.reel-screen--expanded .reels-player-window-header {
+  padding: 10px 14px 0;
 }
 
 .reel-screen--expanded .reels-player-expand-btn {
-  top: 14px;
-  right: 14px;
-  min-width: 108px;
-  height: 34px;
+  min-width: 96px;
+  height: 32px;
   background: rgba(10, 10, 10, 0.72);
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .reel-screen--expanded .reels-player-reader-window {
   width: min(calc(100% - 32px), 800px);
   max-width: calc(100% - 32px);
-  height: min(70vh, 600px);
-  max-height: min(70vh, 600px);
-  padding: 18px 0;
-  align-items: stretch;
-  justify-content: stretch;
+  /* Cap height so bottom controls (chunk controls ~96px + safe area) stay clear */
+  height: min(52vh, 480px);
+  max-height: min(52vh, 480px);
+  padding: 0;
   border-radius: 34px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(8, 8, 8, 0.72);
   box-shadow: 0 22px 68px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
 }
 
 .reel-screen--expanded .reels-player-text-clip {
@@ -1813,40 +1825,29 @@ body.mode-standard .controls-stack {
 }
 
 .reel-screen--expanded .reels-player-preview {
-  display: block;
+  display: flex;   /* flex so it participates in the column layout */
+  flex: 1;
 }
 
 .reel-screen--expanded .reels-player-bar-top {
-  top: 14px;
-  left: 24px;
-  right: 24px;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 .reel-screen--expanded .reels-player-bar-bottom {
-  bottom: 14px;
-  left: 24px;
-  right: 24px;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
+/* When preview is expanded, keep all controls in their normal positions.
+   Only hide the non-essential overlays that would clutter the reading view. */
 .reels-player-content--preview-expanded .reels-progress-container,
-.reels-player-content--preview-expanded .reels-frame-counter,
-.reels-player-content--preview-expanded .reels-delete-btn,
-.reels-player-content--preview-expanded .settings-button {
+.reels-player-content--preview-expanded .reels-frame-counter {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.22s ease, transform 0.22s ease;
-}
-
-.reels-player-content--preview-expanded .reels-chunk-controls {
-  top: calc(50% + min(35vh, 300px) + 12px);
-  bottom: auto;
-  z-index: 140;
-}
-
-.reels-player-content--preview-expanded .reels-compact-play-btn {
-  top: calc(50% + min(35vh, 300px) + 88px);
-  bottom: auto;
-  z-index: 140;
+  transition: opacity 0.22s ease;
 }
 
 .reels-chunk-controls {
@@ -1958,11 +1959,11 @@ body.mode-standard .controls-stack {
 }
 
 .reels-player-bar-top {
-  top: 20px;
+  top: 0;
 }
 
 .reels-player-bar-bottom {
-  bottom: 20px;
+  bottom: 0;
 }
 
 .reel-character-overlay {
