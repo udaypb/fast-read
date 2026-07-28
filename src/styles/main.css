@@ -2165,8 +2165,8 @@ body.settings-sheet-open .import-root {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  width: 68px;
+  gap: 5px;
+  width: 78px;
   pointer-events: auto;
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
@@ -2214,8 +2214,11 @@ body.settings-sheet-open .import-root {
 }
 
 .reels-background-cycle-label {
-  width: 100%;
-  min-height: 13px;
+  max-width: 100%;
+  min-height: 16px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--reel-ui-surface) 70%, transparent);
   color: var(--reel-ui-muted);
   font-family: var(--font-ui);
   font-size: 0.58rem;
@@ -2226,7 +2229,8 @@ body.settings-sheet-open .import-root {
   text-shadow: 0 2px 8px var(--reel-ui-shadow);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: clip;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 .reels-background-cycle-title {
@@ -2237,6 +2241,7 @@ body.settings-sheet-open .import-root {
   font-weight: 850;
   letter-spacing: 0.08em;
   line-height: 1;
+  margin-top: 1px;
   text-align: center;
   text-shadow: 0 2px 8px var(--reel-ui-shadow);
   text-transform: uppercase;
@@ -3543,7 +3548,7 @@ body.mode-portrait .settings-reel-section {
     top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px));
     right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
     bottom: auto;
-    width: 68px;
+    width: 78px;
   }
 
   .reels-background-cycle-btn {
@@ -3553,6 +3558,7 @@ body.mode-portrait .settings-reel-section {
 
   .reels-background-cycle-label {
     font-size: 0.56rem;
+    padding: 3px 6px;
   }
 
   .reels-compact-play-btn {
