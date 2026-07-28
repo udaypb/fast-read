@@ -155,12 +155,10 @@ export class ReelsPlayer {
         this.backgroundCycleBtn.setAttribute('aria-label', 'Change reel background');
         this.backgroundCycleBtn.innerHTML = `
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16.5 3.75h3.75v3.75" />
-                <path d="M3.75 7.5h2.06c1.2 0 2.3.67 2.86 1.73l2.66 5.04A3.24 3.24 0 0 0 14.19 16h1.81" />
-                <path d="M20.25 16.5h-3.75v-3.75" />
-                <path d="M20.25 3.75l-4.2 4.2" />
-                <path d="M3.75 16.5h2.06c1.2 0 2.3-.67 2.86-1.73l.45-.86" />
-                <path d="M13.64 9.27l.69-1.31A3.24 3.24 0 0 1 17.19 6.25h2.31" />
+                <path d="M17.8 7.05A7.2 7.2 0 0 0 5.45 9.5" />
+                <path d="M17.8 3.95v3.1h-3.1" />
+                <path d="M6.2 16.95A7.2 7.2 0 0 0 18.55 14.5" />
+                <path d="M6.2 20.05v-3.1h3.1" />
             </svg>
         `;
         this.backgroundCycleBtn.addEventListener('click', (event) => {
