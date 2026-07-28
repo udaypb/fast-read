@@ -249,6 +249,14 @@ function normalizeFramesPerReel(framesPerReel: number): number {
     : DEFAULT_FRAMES_PER_REEL;
 }
 
+const reelState = {
+  docId: '',
+  activeReelId: null as string | null,
+  currentReelIndex: -1,
+  currentPage: null as ReelPage | null,
+  documentCount: 0
+};
+
 const reader = new Reader({
   frames,
   wpm: DEFAULT_WPM,
@@ -455,14 +463,6 @@ async function runIntroSequence(sessions: StoredReelSession[]) {
   // New-user landing (also for returning users with no saved reels)
   showEmptyReel();
 }
-
-const reelState = {
-  docId: '',
-  activeReelId: null as string | null,
-  currentReelIndex: -1,
-  currentPage: null as ReelPage | null,
-  documentCount: 0
-};
 
 reelState.documentCount = Math.max(reelState.documentCount, storedSessions.length);
 
