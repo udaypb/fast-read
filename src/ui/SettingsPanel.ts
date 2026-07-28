@@ -468,6 +468,10 @@ export class SettingsPanel {
         title.className = 'settings-reel-title';
         title.textContent = reel.title || `Reel ${reel.index + 1}`;
 
+        const preview = document.createElement('div');
+        preview.className = 'settings-reel-text-preview';
+        preview.textContent = this.formatReelTextPreview(reel.text);
+
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
         deleteBtn.className = 'settings-reel-delete-btn';
@@ -483,7 +487,7 @@ export class SettingsPanel {
             this.handlers?.onReelDelete?.(reel);
         });
 
-        btn.append(deleteBtn, title);
+        btn.append(deleteBtn, title, preview);
         btn.addEventListener('click', () => {
             this.activeReelId = reel.reelId;
             this.updateReelPreviewState();
@@ -491,6 +495,16 @@ export class SettingsPanel {
         });
 
         return btn;
+    }
+
+    private formatReelTextPreview(text: string): string {
+        const compact = text.replace(/\s+/g, ' ').trim();
+        if (!compact) return 'No text preview';
+
+        const maxLength = 92;
+        if (compact.length <= maxLength) return compact;
+
+        return `${compact.slice(0, maxLength).trimEnd()}...`;
     }
 
     private updateReelPreviewState(): void {
