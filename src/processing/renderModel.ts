@@ -9,17 +9,9 @@ export type LocalRenderModel = {
 };
 
 const FRAMES_PER_REEL = 40;
-const RANDOM_BACKGROUND_CATEGORIES = new Set([
-  'satisfying',
-  'subway',
-  'minecraft',
-  'temple',
-  'fortnite',
-  'real'
-]);
+const RANDOM_BACKGROUND_CATEGORIES = new Set(['calming']);
 
 const randomBackgrounds = backgroundCatalog.filter((background) => (
-  background.type === BackgroundType.Video &&
   background.category &&
   RANDOM_BACKGROUND_CATEGORIES.has(background.category)
 ));
@@ -27,7 +19,7 @@ const randomBackgrounds = backgroundCatalog.filter((background) => (
 function pickRandomBackground(previousId?: string) {
   const candidates = randomBackgrounds.length > 0
     ? randomBackgrounds
-    : backgroundCatalog.filter((background) => background.category !== 'intro');
+    : backgroundCatalog.filter((background) => background.id === 'net');
 
   if (candidates.length === 0) {
     return backgroundCatalog.find((background) => background.id === 'net') ?? backgroundCatalog[0];

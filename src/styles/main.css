@@ -2018,6 +2018,7 @@ body.settings-sheet-open .import-root {
 /* When preview is expanded, keep all controls in their normal positions.
    Only hide the non-essential overlays that would clutter the reading view. */
 .reels-player-content--preview-expanded .reels-progress-container,
+.reels-player-content--preview-expanded .reels-percent-progress,
 .reels-player-content--preview-expanded .reels-frame-counter,
 .reels-player-content--preview-expanded .reader-upload-switcher-shell {
   opacity: 0;
@@ -2315,6 +2316,51 @@ body.settings-sheet-open .import-root {
   text-shadow: 0 2px 8px var(--reel-ui-shadow);
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.reels-percent-progress {
+  position: absolute;
+  right: 26px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      var(--reel-ui-accent-strong) 0deg var(--reels-percent-progress, 0deg),
+      color-mix(in srgb, var(--reel-ui-foreground) 14%, transparent) var(--reels-percent-progress, 0deg) 360deg
+    ),
+    var(--reel-ui-surface);
+  color: var(--reel-ui-foreground);
+  box-shadow: 0 8px 22px var(--reel-ui-shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 132;
+  pointer-events: none;
+}
+
+.reels-percent-progress::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--reel-ui-surface) 88%, transparent);
+  box-shadow: inset 0 0 0 1px var(--reel-ui-border);
+}
+
+.reels-percent-progress-value {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-shadow: 0 1px 6px var(--reel-ui-shadow);
 }
 
 .reels-compact-play-btn:hover {
@@ -2831,6 +2877,7 @@ body.mode-standard .controls-stack .settings-button {
 .reels-player-content.settings-open .reels-chunk-controls,
 .reels-player-content.settings-open .reader-upload-switcher-shell,
 .reels-player-content.settings-open .reels-progress-container,
+.reels-player-content.settings-open .reels-percent-progress,
 .reels-player-content.settings-open .reels-frame-counter,
 .reels-player-content.settings-open .reels-pager {
   opacity: 0;
@@ -2847,6 +2894,7 @@ body.mode-standard .controls-stack .settings-button {
 .reels-player-content.reels-empty-state .reels-delete-btn,
 .reels-player-content.reels-empty-state .settings-button,
 .reels-player-content.reels-empty-state .reels-progress-container,
+.reels-player-content.reels-empty-state .reels-percent-progress,
 .reels-player-content.reels-empty-state .reels-frame-counter,
 .reels-player-content.reels-empty-state .reader-upload-switcher-shell,
 .reels-player-content.reels-empty-state .reels-player-text-progress {

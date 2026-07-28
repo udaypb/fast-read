@@ -24,6 +24,8 @@ export class ReelsPlayer {
     private progressContainer: HTMLElement;
     private progressBar: HTMLElement;
     private frameCounter: HTMLElement;
+    private percentProgressEl: HTMLElement;
+    private percentProgressValue: HTMLElement;
     private playPauseIndicator: HTMLElement;
 
     private pager: HTMLElement;
@@ -100,6 +102,19 @@ export class ReelsPlayer {
         this.frameCounter = document.createElement('div');
         this.frameCounter.className = 'reels-frame-counter';
         this.frameCounter.textContent = '0 / 0';
+
+        this.percentProgressEl = document.createElement('div');
+        this.percentProgressEl.className = 'reels-percent-progress';
+        this.percentProgressEl.setAttribute('role', 'progressbar');
+        this.percentProgressEl.setAttribute('aria-label', 'Content completed');
+        this.percentProgressEl.setAttribute('aria-valuemin', '0');
+        this.percentProgressEl.setAttribute('aria-valuemax', '100');
+        this.percentProgressEl.setAttribute('aria-valuenow', '0');
+        this.percentProgressEl.style.setProperty('--reels-percent-progress', '0deg');
+        this.percentProgressValue = document.createElement('span');
+        this.percentProgressValue.className = 'reels-percent-progress-value';
+        this.percentProgressValue.textContent = '0%';
+        this.percentProgressEl.append(this.percentProgressValue);
 
         this.playPauseIndicator = document.createElement('div');
         this.playPauseIndicator.className = 'reels-center-indicator';
@@ -198,6 +213,7 @@ export class ReelsPlayer {
         this.contentEl.append(
             this.progressContainer,
             this.frameCounter,
+            this.percentProgressEl,
             this.playPauseIndicator,
             this.seekIndicator,
             this.deleteBtn,
@@ -237,9 +253,17 @@ export class ReelsPlayer {
     }
 
     setProgress(current: number, total: number): void {
-        const percentage = total > 1 ? (current / (total - 1)) * 100 : 0;
-        this.progressBar.style.width = `${percentage}%`;
-        this.frameCounter.textContent = `${current + 1} / ${total}`;
+        const clampedTotal = Math.max(0, total);
+        const safeCurrent = clampedTotal > 0 ? Math.min(Math.max(current, 0), clampedTotal - 1) : 0;
+        const barPercentage = clampedTotal > 1 ? (safeCurrent / (clampedTotal - 1)) * 100 : 0;
+        const completedPercentage = clampedTotal > 0 ? ((safeCurrent + 1) / clampedTotal) * 100 : 0;
+        const roundedCompletedPercentage = Math.round(completedPercentage);
+        this.progressBar.style.width = `${barPercentage}%`;
+        this.frameCounter.textContent = clampedTotal > 0 ? `${safeCurrent + 1} / ${clampedTotal}` : '0 / 0';
+        this.percentProgressEl.style.setProperty('--reels-percent-progress', `${completedPercentage * 3.6}deg`);
+        this.percentProgressEl.setAttribute('aria-valuenow', String(roundedCompletedPercentage));
+        this.percentProgressEl.title = `${roundedCompletedPercentage}% complete`;
+        this.percentProgressValue.textContent = `${roundedCompletedPercentage}%`;
     }
 
     setLoading(loading: boolean, text: string = 'Processing text...'): void {
