@@ -71,6 +71,8 @@ export class Background {
     if (definition.type === BackgroundType.Video) {
       if (definition.url) {
         const video = document.createElement('video');
+        video.preload = 'auto';
+        video.crossOrigin = 'anonymous';
         video.src = definition.url;
         video.autoplay = true;
         video.loop = true;

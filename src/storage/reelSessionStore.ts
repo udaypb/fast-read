@@ -2,7 +2,6 @@ import type { Reel } from '../api/types';
 
 const STORAGE_KEY = 'read-fast:reel-sessions:v2';
 const LEGACY_STORAGE_KEY = 'read-fast:reel-sessions:v1';
-const MAX_SESSION_STORAGE_MB = 4;
 
 export type StoredReelSession = {
   docId: string;
@@ -62,18 +61,16 @@ function safeParse(raw: string | null): StoreState {
   }
 }
 
-function getByteLength(value: unknown): number {
-  try {
-    return new Blob([JSON.stringify(value)]).size;
-  } catch {
-    return JSON.stringify(value).length;
-  }
-}
-
 function loadState(): StoreState {
   try {
+    const localState = safeParse(window.localStorage.getItem(STORAGE_KEY));
+    if (localState.sessions.length > 0 || localState.hasVisited) {
+      return localState;
+    }
+
     const sessionState = safeParse(window.sessionStorage.getItem(STORAGE_KEY));
     if (sessionState.sessions.length > 0 || sessionState.hasVisited) {
+      persistState(sessionState);
       return sessionState;
     }
 
@@ -91,23 +88,9 @@ function loadState(): StoreState {
 
 function persistState(state: StoreState): void {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // no-op for quota/private mode issues
-  }
-}
-
-function enforceStorageCap(state: StoreState): void {
-  const maxBytes = MAX_SESSION_STORAGE_MB * 1024 * 1024;
-
-  state.sessions.sort((a, b) => {
-    const aTime = new Date(a.updatedAt).getTime();
-    const bTime = new Date(b.updatedAt).getTime();
-    return aTime - bTime;
-  });
-
-  while (state.sessions.length > 0 && getByteLength(state) > maxBytes) {
-    state.sessions.shift();
   }
 }
 
@@ -131,7 +114,6 @@ export function saveOrUpdateSession(session: StoredReelSession): void {
     state.sessions.push(session);
   }
 
-  enforceStorageCap(state);
   persistState(state);
 }
 
@@ -142,7 +124,6 @@ export function updateSessionActiveReel(docId: string, activeReelId: string | nu
 
   session.activeReelId = activeReelId;
   session.updatedAt = new Date().toISOString();
-  enforceStorageCap(state);
   persistState(state);
 }
 
@@ -156,6 +137,16 @@ export function deleteStoredSession(docId: string): void {
 
   state.sessions = nextSessions;
   persistState(state);
+}
+
+export function clearStoredSessions(): void {
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    window.sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // no-op for private mode/storage access issues
+  }
 }
 
 export function getLatestSession(): StoredReelSession | null {

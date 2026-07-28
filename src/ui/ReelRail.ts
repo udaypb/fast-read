@@ -82,6 +82,7 @@ export class ReelRail {
 
   private renderTrack(): void {
     this.track.innerHTML = '';
+    this.renderSelector();
     let hasVisibleContent = false;
 
     this.uploadOrder.forEach((uploadId) => {
@@ -127,6 +128,10 @@ export class ReelRail {
     if (this.activeId) {
       this.setActive(this.activeId);
     }
+  }
+
+  private renderSelector(): void {
+    // Group switching is handled by the custom sheet menu.
   }
 
   private createCard(reel: Reel, uploadId: string, parent: HTMLElement): void {

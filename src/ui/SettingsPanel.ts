@@ -17,6 +17,8 @@ export type SettingsPanelHandlers = {
     onChunkSizeChange?: (chunkSize: number) => void;
     onReelSelect?: (reel: Reel) => void;
     onReelDelete?: (reel: Reel) => void;
+    onGroupSelect?: (docId: string) => void;
+    onDeleteGroup?: (docId: string) => void;
 };
 
 export class SettingsPanel {
@@ -37,15 +39,22 @@ export class SettingsPanel {
     private reels: Reel[] = [];
     private groups: ReelGroup[] = [];
     private activeReelId: string | null = null;
+    private groupSelectShell: HTMLElement;
+    private groupMenuButton: HTMLButtonElement;
+    private groupMenu: HTMLElement;
+    private groupMeta: HTMLElement;
+    private deleteGroupButton: HTMLButtonElement;
+    private activeGroupDocId: string | null = null;
     private reelPreviewsContainer: HTMLElement;
 
     private categories = [
         { id: 'calming', label: 'Calming' },
         { id: 'cartoon', label: 'Cartoon' },
         { id: 'satisfying', label: 'Satisfying' },
-        { id: 'subway', label: 'Subway S' },
-        { id: 'temple', label: 'Temple Run' },
+        { id: 'subway', label: 'Subway' },
+        { id: 'temple', label: 'Racing' },
         { id: 'minecraft', label: 'Minecraft' },
+        { id: 'fortnite', label: 'Fortnite' },
         { id: 'real', label: 'Real' }
     ];
 
@@ -78,11 +87,67 @@ export class SettingsPanel {
         reelsHeader.className = 'settings-section-header';
         reelsHeader.textContent = 'Reels';
 
+        this.groupSelectShell = document.createElement('div');
+        this.groupSelectShell.className = 'settings-group-select-shell';
+        this.groupSelectShell.hidden = true;
+
+        const groupSelectLabel = document.createElement('label');
+        groupSelectLabel.className = 'settings-group-select-label';
+        groupSelectLabel.textContent = 'Content uploaded so far';
+
+        this.groupMenuButton = document.createElement('button');
+        this.groupMenuButton.type = 'button';
+        this.groupMenuButton.className = 'settings-group-menu-button';
+        this.groupMenuButton.setAttribute('aria-haspopup', 'menu');
+        this.groupMenuButton.setAttribute('aria-expanded', 'false');
+        this.groupMenuButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.setGroupMenuOpen(!this.groupSelectShell.classList.contains('settings-group-select-shell--open'));
+        });
+
+        this.groupMenu = document.createElement('div');
+        this.groupMenu.className = 'settings-group-menu';
+        this.groupMenu.setAttribute('role', 'menu');
+        this.groupMenu.hidden = true;
+        this.groupMenu.addEventListener('click', (event) => event.stopPropagation());
+        this.groupMenu.addEventListener('pointerdown', (event) => event.stopPropagation());
+
+        this.groupMeta = document.createElement('div');
+        this.groupMeta.className = 'settings-group-select-meta';
+
+        this.deleteGroupButton = document.createElement('button');
+        this.deleteGroupButton.type = 'button';
+        this.deleteGroupButton.className = 'settings-delete-group-btn';
+        this.deleteGroupButton.setAttribute('aria-label', 'Delete selected group');
+        this.deleteGroupButton.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M9 3.75h6a1.5 1.5 0 0 1 1.5 1.5V6H20a.75.75 0 0 1 0 1.5h-1.03l-.9 11.02a2.25 2.25 0 0 1-2.24 1.98H8.17a2.25 2.25 0 0 1-2.24-1.98L5.03 7.5H4A.75.75 0 0 1 4 6h3.5v-.75A1.5 1.5 0 0 1 9 3.75ZM15 6v-.75H9V6h6ZM6.53 7.5l.89 10.9a.75.75 0 0 0 .75.6h7.66a.75.75 0 0 0 .75-.6l.89-10.9H6.53Z"/>
+            </svg>
+            <span>Delete</span>
+        `;
+        this.deleteGroupButton.disabled = true;
+        this.deleteGroupButton.addEventListener('click', () => {
+            const docId = this.activeGroupDocId || this.groups.find((group) => group.isActive)?.docId;
+            if (!docId) return;
+            this.handlers?.onDeleteGroup?.(docId);
+        });
+
+        const groupSelectRow = document.createElement('div');
+        groupSelectRow.className = 'settings-group-select-row';
+        groupSelectRow.append(this.groupMenuButton, this.deleteGroupButton);
+
+        this.groupSelectShell.append(groupSelectLabel, this.groupMeta, groupSelectRow, this.groupMenu);
+        document.addEventListener('click', (event) => {
+            const target = event.target as Node | null;
+            if (target && this.groupSelectShell.contains(target)) return;
+            this.setGroupMenuOpen(false);
+        });
+
         this.reelPreviewsContainer = document.createElement('div');
         this.reelPreviewsContainer.className = 'settings-reel-previews';
         this.renderReelPreviews();
 
-        reelsSection.append(reelsHeader, this.reelPreviewsContainer);
+        reelsSection.append(reelsHeader, this.groupSelectShell, this.reelPreviewsContainer);
         this.contentWrapper.appendChild(reelsSection);
 
         // Playback Controls Section
@@ -264,34 +329,21 @@ export class SettingsPanel {
     private renderReelPreviews(): void {
         this.reelPreviewsContainer.innerHTML = '';
 
-        // Use groups if available, otherwise fall back to flat reels list
-        const groups = this.groups.length > 0
-            ? this.groups
+        this.renderGroupSelect();
+
+        const activeGroup = this.groups.find((group) => group.isActive) ?? this.groups[0] ?? null;
+        const groups = activeGroup
+            ? [activeGroup]
             : (this.reels.length > 0 ? [{ docId: '', label: '', reels: this.reels, isActive: true }] : []);
 
         if (groups.length === 0) {
-            const msg = document.createElement('div');
-            msg.className = 'settings-reel-empty';
-            msg.textContent = 'No reels yet';
-            this.reelPreviewsContainer.appendChild(msg);
             return;
         }
-
-        const showLabels = groups.length > 1;
 
         groups.forEach((group) => {
             const groupEl = document.createElement('div');
             groupEl.className = 'settings-reel-group';
             if (group.isActive) groupEl.classList.add('settings-reel-group--active');
-
-            // Only show labels when there are multiple groups (avoids "Reel 1" label + "Reel 1" card redundancy)
-            if (showLabels && group.label) {
-                const labelEl = document.createElement('div');
-                labelEl.className = 'settings-reel-group-label';
-                if (group.isActive) labelEl.classList.add('settings-reel-group-label--active');
-                labelEl.textContent = group.label;
-                groupEl.appendChild(labelEl);
-            }
 
             const cardsRow = document.createElement('div');
             cardsRow.className = 'settings-reel-group-cards';
@@ -310,6 +362,89 @@ export class SettingsPanel {
             groupEl.appendChild(cardsRow);
             this.reelPreviewsContainer.appendChild(groupEl);
         });
+    }
+
+    private renderGroupSelect(): void {
+        const groups = this.groups;
+        this.groupMenu.innerHTML = '';
+        this.groupSelectShell.hidden = groups.length === 0;
+        this.deleteGroupButton.disabled = groups.length === 0;
+
+        if (groups.length === 0) {
+            this.activeGroupDocId = null;
+            this.groupMenuButton.textContent = '';
+            this.groupMeta.textContent = '';
+            this.setGroupMenuOpen(false);
+            return;
+        }
+
+        const activeGroup = groups.find((group) => group.isActive) ?? groups[0];
+        this.activeGroupDocId = activeGroup.docId;
+        this.groupMenuButton.replaceChildren(
+            this.createTextSpan('settings-group-menu-title', activeGroup.label),
+            this.createTextSpan('settings-group-menu-icon', '')
+        );
+        this.groupMenuButton.querySelector('.settings-group-menu-icon')?.setAttribute('aria-hidden', 'true');
+        this.groupMenuButton.disabled = groups.length <= 1;
+
+        groups.forEach((group, index) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'settings-group-menu-item';
+            item.setAttribute('role', 'menuitemradio');
+            item.setAttribute('aria-checked', String(group.docId === activeGroup.docId));
+            item.dataset.docId = group.docId;
+            item.append(
+                this.createTextSpan('settings-group-menu-item-label', `${index + 1}. ${group.label}`),
+                this.createTextSpan(
+                    'settings-group-menu-item-meta',
+                    group.reels.length === 1 ? '1 reel' : `${group.reels.length} reels`
+                )
+            );
+            item.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.selectGroup(group.docId);
+            });
+            item.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            });
+            this.groupMenu.append(item);
+        });
+
+        const activeIndex = Math.max(0, groups.findIndex((group) => group.docId === activeGroup.docId));
+        const reelCount = activeGroup.reels.length;
+        const reelLabel = reelCount === 1 ? '1 reel' : `${reelCount} reels`;
+        this.groupMeta.textContent = `${activeIndex + 1} of ${groups.length} · ${reelLabel}`;
+    }
+
+    private selectGroup(docId: string): void {
+        const selectedGroup = this.groups.find((group) => group.docId === docId);
+        if (!selectedGroup) return;
+
+        this.groups = this.groups.map((group) => ({
+            ...group,
+            isActive: group.docId === docId
+        }));
+        this.reels = selectedGroup.reels;
+        this.activeReelId = selectedGroup.reels[0]?.reelId ?? null;
+        this.setGroupMenuOpen(false);
+        this.renderReelPreviews();
+        this.handlers?.onGroupSelect?.(docId);
+    }
+
+    private setGroupMenuOpen(open: boolean): void {
+        this.groupSelectShell.classList.toggle('settings-group-select-shell--open', open);
+        this.groupMenu.hidden = !open;
+        this.groupMenuButton.setAttribute('aria-expanded', String(open));
+    }
+
+    private createTextSpan(className: string, text: string): HTMLSpanElement {
+        const span = document.createElement('span');
+        span.className = className;
+        span.textContent = text;
+        return span;
     }
 
     private createReelCard(reel: Reel): HTMLElement {
@@ -384,6 +519,7 @@ export class SettingsPanel {
     public close(): void {
         if (!this.isOpen) return;
         this.isOpen = false;
+        this.setGroupMenuOpen(false);
         this.updatePanelState();
     }
 
@@ -424,6 +560,7 @@ export class SettingsPanel {
             if (!isHandle && (
                 target.tagName === 'BUTTON' ||
                 target.tagName === 'INPUT' ||
+                target.closest('.settings-group-menu') ||
                 target.closest('.settings-preview-item') ||
                 target.closest('.settings-style-tab') ||
                 target.closest('.settings-reel-card')
@@ -523,19 +660,14 @@ export class SettingsPanel {
     }
 
     public setGroups(groups: ReelGroup[], activeReelId?: string | null): void {
+        const active = groups.find(g => g.isActive) ?? groups[0];
         this.groups = groups;
         // Keep flat reels list synced to the active group for backwards compat
-        const active = groups.find(g => g.isActive) ?? groups[0];
         this.reels = active?.reels ?? [];
         if (activeReelId !== undefined) {
             this.activeReelId = activeReelId ?? null;
         }
         this.renderReelPreviews();
-        // Scroll the active group into view within its own container only (not the panel)
-        const activeGroup = this.reelPreviewsContainer.querySelector<HTMLElement>('.settings-reel-group--active');
-        if (activeGroup && this.reelPreviewsContainer.scrollHeight > this.reelPreviewsContainer.clientHeight) {
-            this.reelPreviewsContainer.scrollTop = activeGroup.offsetTop - 8;
-        }
     }
 
     public setReels(reels: Reel[], options?: { activeReelId?: string; align?: 'start' | 'end' }): void {

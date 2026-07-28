@@ -21,9 +21,10 @@ export class StyleSelector {
         { id: 'calming', label: 'Calming' },
         { id: 'cartoon', label: 'Cartoon' },
         { id: 'satisfying', label: 'Satisfying' },
-        { id: 'subway', label: 'Subway S' },
-        { id: 'temple', label: 'Temple Run' },
+        { id: 'subway', label: 'Subway' },
+        { id: 'temple', label: 'Racing' },
         { id: 'minecraft', label: 'Minecraft' },
+        { id: 'fortnite', label: 'Fortnite' },
         { id: 'real', label: 'Real' }
     ];
 

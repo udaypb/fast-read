@@ -1,6 +1,19 @@
 import { BackgroundDefinition, VantaEffectFactory, BackgroundType } from './types';
 
 type VantaModule = { default?: unknown };
+const DEFAULT_BACKGROUND_ASSET_BASE_URL = 'https://readfast-live-backgrounds-598886662694.s3.us-east-1.amazonaws.com';
+const BACKGROUND_ASSET_BASE_URL =
+  (import.meta.env.VITE_BACKGROUND_ASSET_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
+  DEFAULT_BACKGROUND_ASSET_BASE_URL;
+
+function backgroundAssetUrl(fileName: string): string {
+  const path = fileName
+    .replace(/^\//, '')
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+  return `${BACKGROUND_ASSET_BASE_URL}/${path}`;
+}
 
 function wrapEffect(load: () => Promise<unknown>): () => Promise<VantaEffectFactory> {
   return async () => {
@@ -151,102 +164,164 @@ export const backgroundCatalog: BackgroundDefinition[] = [
     type: BackgroundType.Custom,
     thumbnail: 'https://placehold.co/120x80/444/FFF?text=Rain'
   },
-  // Satisfying Videos
+  // Satisfying and space loops
   {
-    id: 'satisfying_1',
-    label: 'Sand',
+    id: 'neon_tunnel',
+    label: 'Neon Tunnel',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/satisfying_1.mp4',
+    url: backgroundAssetUrl('abstract_6.mp4'),
     category: 'satisfying',
-    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Sand',
+    thumbnail: 'https://placehold.co/120x80/222/FFF?text=Tunnel'
+  },
+  {
+    id: 'particle_bloom',
+    label: 'Particle Bloom',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('abstract_4.mp4'),
+    category: 'satisfying',
+    thumbnail: 'https://placehold.co/120x80/2f225a/FFF?text=Bloom'
+  },
+  {
+    id: 'light_corridor',
+    label: 'Light Corridor',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('abstract_1.mp4'),
+    category: 'satisfying',
+    thumbnail: 'https://placehold.co/120x80/111/FFF?text=Light'
+  },
+  {
+    id: 'wire_tunnel',
+    label: 'Wire Tunnel',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('abstract_3_fast.mp4'),
+    category: 'satisfying',
+    thumbnail: 'https://placehold.co/120x80/18124a/FFF?text=Wire'
+  },
+  {
+    id: 'mandala',
+    label: 'Mandala',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('abstract_mandala.mp4'),
+    category: 'satisfying',
+    thumbnail: 'https://placehold.co/120x80/7420a8/FFF?text=Mandala',
     textTone: 'dark'
   },
   {
-    id: 'satisfying_2',
-    label: 'Colors',
+    id: 'galaxy_core',
+    label: 'Galaxy Core',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/color_low.mp4',
+    url: backgroundAssetUrl('space_4.mp4'),
     category: 'satisfying',
-    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Colors',
-    textTone: 'dark'
+    thumbnail: 'https://placehold.co/120x80/3a1b27/FFF?text=Galaxy'
   },
   {
-    id: 'satisfying_3',
-    label: 'Kinetic',
+    id: 'aurora_lake',
+    label: 'Aurora Lake',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/satisfying_2.mp4',
+    url: backgroundAssetUrl('space_6.mp4'),
     category: 'satisfying',
-    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Kinetic',
-    textTone: 'dark'
+    thumbnail: 'https://placehold.co/120x80/102a35/FFF?text=Aurora'
   },
   {
-    id: 'satisfying_4',
-    label: 'Flow',
+    id: 'nebula_cloud',
+    label: 'Nebula Cloud',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/satisfying_3.mp4',
+    url: backgroundAssetUrl('space_2.mp4'),
     category: 'satisfying',
-    thumbnail: 'https://placehold.co/120x80/d4a373/FFF?text=Flow',
-    textTone: 'dark'
+    thumbnail: 'https://placehold.co/120x80/1c2447/FFF?text=Nebula'
+  },
+  {
+    id: 'deep_space',
+    label: 'Deep Space',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('space_1.mp4'),
+    category: 'satisfying',
+    thumbnail: 'https://placehold.co/120x80/100e13/FFF?text=Space'
   },
 
   // Subway Surfers
   {
     id: 'subway_1',
-    label: 'Subway 1',
+    label: 'Tunnel Run',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/subway_surfer_1.mp4',
+    url: backgroundAssetUrl('subway_surfer_1_fast.mp4'),
     category: 'subway',
-    thumbnail: 'https://placehold.co/120x80/e76f51/FFF?text=Run1'
+    thumbnail: 'https://placehold.co/120x80/3a6b28/FFF?text=Tunnel'
   },
   {
     id: 'subway_2',
-    label: 'Subway 2',
+    label: 'Classic Run',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/subway_surfer_2.mp4',
+    url: backgroundAssetUrl('subway_surfer_2_fast.mp4'),
     category: 'subway',
-    thumbnail: 'https://placehold.co/120x80/e76f51/FFF?text=Run2'
+    thumbnail: 'https://placehold.co/120x80/e76f51/FFF?text=Classic'
   },
   {
     id: 'subway_3',
-    label: 'Subway 3',
+    label: 'Night Tracks',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/subway_surfer_3.mp4',
+    url: backgroundAssetUrl('subway_surfer_3_fast.mp4'),
     category: 'subway',
-    thumbnail: 'https://placehold.co/120x80/e76f51/FFF?text=Run3'
+    thumbnail: 'https://placehold.co/120x80/163c3f/FFF?text=Night'
   },
   {
     id: 'subway_4',
-    label: 'Subway 4',
+    label: 'Forest Rails',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/subway_surfer_4.mp4',
+    url: backgroundAssetUrl('subway_surfer_4_fast.mp4'),
     category: 'subway',
-    thumbnail: 'https://placehold.co/120x80/e76f51/FFF?text=Run4'
+    thumbnail: 'https://placehold.co/120x80/6b9d28/FFF?text=Forest'
+  },
+  {
+    id: 'china_surfer',
+    label: 'China Runner',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('china_surfer_low_fast.mp4'),
+    category: 'subway',
+    thumbnail: 'https://placehold.co/120x80/a42525/FFF?text=China'
   },
 
   // Minecraft
   {
     id: 'minecraft_1',
-    label: 'Parkour 1',
+    label: 'Village Parkour',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/minecraft_1.mp4',
+    url: backgroundAssetUrl('minecraft_1.mp4'),
     category: 'minecraft',
-    thumbnail: 'https://placehold.co/120x80/264653/FFF?text=MC1'
+    thumbnail: 'https://placehold.co/120x80/6e8c3a/FFF?text=Village'
   },
   {
-    id: 'minecraft_2',
-    label: 'Parkour 2',
+    id: 'minecraft_3',
+    label: 'Sunset Blocks',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/minecraft_2.mp4',
+    url: backgroundAssetUrl('minecraft_3.mp4'),
     category: 'minecraft',
-    thumbnail: 'https://placehold.co/120x80/264653/FFF?text=MC2'
+    thumbnail: 'https://placehold.co/120x80/b37d50/FFF?text=Sunset'
   },
   {
-    id: 'minecraft_5',
-    label: 'Parkour 3',
+    id: 'minecraft_4',
+    label: 'Cave Lantern',
     type: BackgroundType.Video,
-    url: 'https://pub-8a076bf1fd41463dbb695d05492a7ac0.r2.dev/minecraft_5.mp4',
+    url: backgroundAssetUrl('minecraft_4.mp4'),
     category: 'minecraft',
-    thumbnail: 'https://placehold.co/120x80/264653/FFF?text=MC3'
+    thumbnail: 'https://placehold.co/120x80/4c4035/FFF?text=Cave'
+  },
+  {
+    id: 'minecraft_6',
+    label: 'Bamboo Canyon',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('minecraft_6_fast.mp4'),
+    category: 'minecraft',
+    thumbnail: 'https://placehold.co/120x80/b4552e/FFF?text=Canyon',
+    textTone: 'dark'
+  },
+  {
+    id: 'minecraft_night',
+    label: 'Night Bridge',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('minecraft_night_bridge.mp4'),
+    category: 'minecraft',
+    thumbnail: 'https://placehold.co/120x80/14212d/FFF?text=Night'
   },
 
   {
@@ -261,14 +336,83 @@ export const backgroundCatalog: BackgroundDefinition[] = [
     thumbnail: 'https://placehold.co/120x80/FFF/000?text=Welcome',
     textTone: 'dark'
   },
-  // Temple Run (Keeping placeholder for now)
+  // Racing/action clips. The category id remains "temple" so older saved settings still resolve.
   {
-    id: 'temple_1',
-    label: 'Temple Run',
+    id: 'racing_future',
+    label: 'Future Track',
     type: BackgroundType.Video,
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    url: backgroundAssetUrl('track_video.mp4'),
     category: 'temple',
-    thumbnail: 'https://placehold.co/120x80/2a9d8f/FFF?text=Temple'
+    thumbnail: 'https://placehold.co/120x80/9fb7c5/000?text=Future',
+    textTone: 'dark'
+  },
+  {
+    id: 'racing_stadium',
+    label: 'Stadium Track',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('track.mp4'),
+    category: 'temple',
+    thumbnail: 'https://placehold.co/120x80/6da578/FFF?text=Track',
+    textTone: 'dark'
+  },
+  {
+    id: 'fortnite_ridge',
+    label: 'Ridge Drive',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('fortnite_1.mp4'),
+    category: 'fortnite',
+    thumbnail: 'https://placehold.co/120x80/6a79a8/FFF?text=Drive'
+  },
+  {
+    id: 'fortnite_corridor',
+    label: 'Green Corridor',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('fortnite_2.mp4'),
+    category: 'fortnite',
+    thumbnail: 'https://placehold.co/120x80/7ac66a/000?text=Corridor',
+    textTone: 'dark'
+  },
+  {
+    id: 'fortnite_night',
+    label: 'Night Elims',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('fortnite_3.mp4'),
+    category: 'fortnite',
+    thumbnail: 'https://placehold.co/120x80/12304b/FFF?text=Night'
+  },
+  {
+    id: 'fortnite_neon_dash',
+    label: 'Neon Dash',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('fortnite_neon_dash.mp4'),
+    category: 'fortnite',
+    thumbnail: 'https://placehold.co/120x80/2b1f69/FFF?text=Neon'
+  },
+  {
+    id: 'fortnite_build',
+    label: 'Build Run',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('fortnite_4.mp4'),
+    category: 'fortnite',
+    thumbnail: 'https://placehold.co/120x80/c5a46d/000?text=Build',
+    textTone: 'dark'
+  },
+  {
+    id: 'ocean_coast',
+    label: 'Ocean Coast',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('ocean_coast.mp4'),
+    category: 'real',
+    thumbnail: 'https://placehold.co/120x80/426a6f/FFF?text=Ocean'
+  },
+  {
+    id: 'leaf_macro',
+    label: 'Leaf Macro',
+    type: BackgroundType.Video,
+    url: backgroundAssetUrl('leaf_macro.mp4'),
+    category: 'real',
+    thumbnail: 'https://placehold.co/120x80/4c8a3f/FFF?text=Leaf',
+    textTone: 'dark'
   }
 ];
 

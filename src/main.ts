@@ -1,13 +1,17 @@
 import './styles/main.css';
 
+import { inject } from '@vercel/analytics';
 import { groupTokens } from './reader/Grouper';
 import { Reader } from './reader/Reader';
 import { tokenize } from './reader/Tokenizer';
-import { createDocFromFile, createDocFromText, getDocStatus, getReelPage, streamReels } from './api/client';
 import type { Reel, ReelPage } from './api/types';
+import { extractTextFromPdf } from './processing/pdfExtract';
+import { createLocalRenderModel } from './processing/renderModel';
+import { TextProcessorClient } from './processing/TextProcessorClient';
 import type { Frame } from './reader/types';
 import {
   deleteStoredSession,
+  clearStoredSessions,
   getStoredSessions,
   markVisitedApp,
   saveOrUpdateSession,
@@ -22,6 +26,9 @@ import { SettingsPanel, type ReelGroup } from './ui/SettingsPanel';
 import { ReelsPlayer, DisplayMode } from './ui/ReelsPlayer';
 import { SettingsButton } from './ui/SettingsButton';
 import { backgroundCatalog, getBackgroundDefinition } from './ui/backgrounds/catalog';
+import { BackgroundType } from './ui/backgrounds/types';
+
+inject();
 
 const SAMPLE_TEXT =
   'Read Fast is a minimalist speed reading demo. It keeps the words steady, inside two calm guide bars, so your eyes stay centered. Use the controls to play, pause, or adjust the speed. Tap space to start, then arrow keys to jump or change pace.';
@@ -39,7 +46,24 @@ const confirmDialog = new ConfirmDialog();
 const DEFAULT_WPM = 250;
 const DEFAULT_CHUNK_SIZE = 1;
 const REEL_PAGE_LIMIT = 5;
-const REEL_TRANSITION_PAUSE_MS = 1000;
+const MAX_LOCAL_TEXT_WORDS = 50000;
+const textProcessor = new TextProcessorClient();
+const CYCLABLE_BACKGROUND_CATEGORIES = new Set([
+  'satisfying',
+  'subway',
+  'minecraft',
+  'temple',
+  'fortnite',
+  'real',
+  'calming',
+  'cartoon'
+]);
+const cyclableBackgrounds = backgroundCatalog.filter((backgroundItem) => (
+  backgroundItem.category &&
+  CYCLABLE_BACKGROUND_CATEGORIES.has(backgroundItem.category) &&
+  backgroundItem.category !== 'intro' &&
+  (backgroundItem.type === BackgroundType.Video || backgroundItem.type === BackgroundType.Vanta || backgroundItem.type === BackgroundType.Custom)
+));
 
 function stripFileExtension(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, '').trim();
@@ -89,8 +113,6 @@ reelRail.setLoading(false);
 const reelsPlayer = new ReelsPlayer(app);
 const settingsPanel = new SettingsPanel(reelsPlayer.getContentElement(), DEFAULT_WPM, DEFAULT_CHUNK_SIZE);
 const settingsButton = new SettingsButton(reelsPlayer.getContentElement());
-let stopReelStream: (() => void) | null = null;
-let stopReelPoll: (() => void) | null = null;
 reelsPlayer.setWpm(DEFAULT_WPM);
 
 // Bind settings button to toggle settings panel
@@ -98,40 +120,10 @@ settingsButton.bind(() => settingsPanel.toggle());
 
 // Bind settings panel handlers
 settingsPanel.bind({
-  onStyleChange: (style: string, specificId?: string) => {
-    activeStyle = style;
-
+  onStyleChange: (_style: string, specificId?: string) => {
     if (specificId) {
-      manualBackgroundId = specificId;
-      applyBackgroundAndTone(specificId);
-      reelsPlayer.setManualBackground(specificId);
+      updateActiveReelBackground(specificId);
       return;
-    }
-
-    // Changing category clears specific selection
-    manualBackgroundId = null;
-    reelsPlayer.setManualBackground(null);
-
-    // Default behaviors when switching category only
-    if (activeStyle === 'cartoon') {
-      const cartoons = ['stickman', 'blobs', 'rain'];
-      const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
-      applyBackgroundAndTone(randomId);
-    } else if (activeStyle === 'calming') {
-      const currentReelId = reelState.activeReelId;
-      applyBackgroundAndTone('net');
-      const reel = reelState.currentPage?.reels.find(r => r.reelId === currentReelId);
-      if (reel) {
-        applyBackgroundAndTone(reel.backgroundId);
-      }
-    } else if (activeStyle === 'real') {
-      console.log('Real mode selected (placeholder)');
-    } else if (activeStyle === 'satisfying' || activeStyle === 'subway' || activeStyle === 'temple' || activeStyle === 'minecraft') {
-      // Auto-select first item if exists
-      const item = backgroundCatalog.find(b => b.category === activeStyle);
-      if (item) {
-        applyBackgroundAndTone(item.id);
-      }
     }
   },
   onPlayPause: () => {
@@ -147,6 +139,26 @@ settingsPanel.bind({
   },
   onReelDelete: (reel) => {
     void deleteReelFromSession(reel);
+  },
+  onGroupSelect: (docId) => {
+    if (reelState.docId === docId) {
+      return;
+    }
+
+    const session = sessionCache.get(docId);
+    if (session) {
+      restoreSession(session);
+    }
+  },
+  onDeleteGroup: (docId) => {
+    if (reelState.docId !== docId) {
+      const session = sessionCache.get(docId);
+      if (!session) {
+        return;
+      }
+      restoreSession(session);
+    }
+    void deleteActiveReelGroup();
   }
 });
 
@@ -167,8 +179,8 @@ reelsPlayer.bind({
   onDelete: () => {
     void deleteActiveReelGroup();
   },
-  onStatusClick: () => {
-    settingsPanel.open();
+  onCycleBackground: () => {
+    cycleActiveReelBackground();
   },
   onActiveReelChange: (reelId: string) => {
     // When the user scrolls manually, sync the rest of the app
@@ -178,9 +190,6 @@ reelsPlayer.bind({
     }
   }
 });
-
-let activeStyle: string = 'calming';
-let manualBackgroundId: string | null = null;
 
 function applyChunkSize(chunkSize: number): void {
   currentChunkSize = Math.max(1, Math.min(3, chunkSize));
@@ -470,14 +479,7 @@ importDialog.bind({
 });
 
 function closeReelStream(): void {
-  if (stopReelStream) {
-    stopReelStream();
-    stopReelStream = null;
-  }
-  if (stopReelPoll) {
-    stopReelPoll();
-    stopReelPoll = null;
-  }
+  reelRequests.clear();
 }
 
 function confirmDeletion(options: { title: string; message: string; confirmLabel?: string }): Promise<boolean> {
@@ -522,6 +524,39 @@ async function deleteActiveReelGroup(options?: { skipConfirm?: boolean }): Promi
   reelRail.hide();
   importDialog.setMinimized(false);
   importDialog.setButtonText('Upload another PDF or text');
+  showEmptyReel();
+}
+
+async function clearAllReadingData(): Promise<void> {
+  const confirmed = await confirmDeletion({
+    title: 'Clear All Reading Data?',
+    message: 'Remove every saved upload and reel from this browser?',
+    confirmLabel: 'Clear all'
+  });
+  if (!confirmed) {
+    return;
+  }
+
+  reader.pause();
+  closeReelStream();
+  sessionCache.clear();
+  clearStoredSessions();
+  reelState.documentCount = 0;
+  activeSessionCreatedAt = new Date().toISOString();
+  activeText = SAMPLE_TEXT;
+
+  resetReelState('');
+  syncDeleteAvailability();
+  syncRailFromSessions({ currentUploadId: null, activeReelId: null });
+  reelRail.setStatus('Upload a PDF or paste text to load reels.');
+  reelRail.setLoading(false);
+  reelRail.setCooking(false);
+  reelRail.hide();
+  reelsPlayer.updateStatus(0, true);
+  reelsPlayer.setLoading(false);
+  importDialog.setMinimized(false);
+  importDialog.setButtonText('Upload another PDF or text');
+  settingsPanel.close();
   showEmptyReel();
 }
 
@@ -588,16 +623,15 @@ async function deleteReelFromSession(reelToDelete: Reel): Promise<void> {
 }
 
 async function ingestFile(file: File): Promise<void> {
-  await ingestDocument(() => createDocFromFile(file), {
+  await ingestDocument(() => extractReadableTextFromFile(file), {
     sessionLabel: buildSessionLabel('file', reelState.documentCount + 1, file.name),
-    loadingText: 'Uploading PDF...',
-    railStatus: 'Uploading your PDF...'
+    loadingText: file.type === 'application/pdf' ? 'Reading PDF...' : 'Reading file...',
+    railStatus: 'Reading your file locally...'
   });
 }
 
 async function ingestText(text: string): Promise<void> {
-  activeText = text;
-  await ingestDocument(() => createDocFromText(text), {
+  await ingestDocument(() => Promise.resolve(text), {
     sessionLabel: buildSessionLabel('text', reelState.documentCount + 1),
     loadingText: 'Chunking your text...',
     railStatus: 'Chunking your text into reels...'
@@ -605,10 +639,17 @@ async function ingestText(text: string): Promise<void> {
 }
 
 async function ingestDocument(
-  createDoc: () => Promise<{ docId: string }>,
+  readText: () => Promise<string>,
   options: { sessionLabel: string; loadingText: string; railStatus: string }
 ): Promise<void> {
+  const previousDocId = reelState.docId || null;
+  const previousActiveReelId = reelState.activeReelId;
+  const shouldActivateNewSession = !previousDocId;
+
   closeReelStream();
+  if (!shouldActivateNewSession) {
+    reader.pause();
+  }
   reelRail.setLoading(true);
   reelRail.setCooking(false);
   reelsPlayer.setLoading(true, options.loadingText);
@@ -623,234 +664,103 @@ async function ingestDocument(
   }
 
   try {
-    const { docId } = await createDoc();
-    const nowIso = new Date().toISOString();
+    const text = normalizeInputText(await readText());
+    const wordCount = countWords(text);
 
-    activeSessionCreatedAt = nowIso;
-    reelState.documentCount += 1;
-    resetReelState(docId);
-    syncDeleteAvailability();
-    reelState.currentPage = {
-      docId,
-      totalReels: 0,
-      offset: 0,
-      limit: REEL_PAGE_LIMIT,
-      reels: [],
-      prevOffset: null,
-      nextOffset: null
-    };
+    if (!text || wordCount === 0) {
+      throw new Error('No readable text was found in this document.');
+    }
+
+    if (wordCount > MAX_LOCAL_TEXT_WORDS) {
+      throw new Error(`Please use ${MAX_LOCAL_TEXT_WORDS.toLocaleString()} words or fewer.`);
+    }
+
+    reelsPlayer.setLoading(true, 'Building reels...');
+    const { frames } = await textProcessor.process(text, currentChunkSize);
+    const docId = createLocalDocId();
+    const { reels } = createLocalRenderModel(docId, frames);
+    const firstReelId = reels[0]?.reelId ?? null;
+    const nowIso = new Date().toISOString();
 
     const session = {
       docId,
       label: options.sessionLabel,
-      reels: [],
-      activeReelId: null,
+      reels,
+      activeReelId: firstReelId,
       createdAt: nowIso,
       updatedAt: nowIso
     };
     saveOrUpdateSession(session);
     sessionCache.set(docId, session);
+    reelState.documentCount = sessionCache.size;
     markVisitedApp();
 
     reelRail.setStatus(options.railStatus);
     reelRail.show();
-    syncRailFromSessions({ currentUploadId: docId, activeReelId: null });
-    reelRail.setCooking(true);
-    reelsPlayer.clearReels();
-    showEmptyReel();
+    reelRail.setCooking(false);
+    reelsPlayer.setLoading(false);
+    reelRail.setLoading(false);
+    importDialog.setMinimized(true);
+    importDialog.setButtonText('+ Add more');
 
-    stopReelStream = streamReels(
-      docId,
-      (reel) => handleStreamedReel(docId, reel),
-      () => finalizeStream(docId)
-    );
-    stopReelPoll = startReelPoll(docId);
+    if (!shouldActivateNewSession) {
+      const activeSession = previousDocId ? sessionCache.get(previousDocId) : null;
+      reelsPlayer.updateStatus(activeSession?.reels.length ?? 0, true);
+      syncRailFromSessions({
+        currentUploadId: previousDocId,
+        activeReelId: previousActiveReelId
+      });
+      return;
+    }
+
+    activeText = text;
+    restoreSession(session);
+    if (!reels[0]) {
+      reelRail.setStatus('No reels were generated.');
+      showEmptyReel();
+    }
   } catch (error) {
     console.error(error);
     reelRail.show();
-    reelRail.setStatus('Failed to process document. Please try again.');
+    reelRail.setStatus(error instanceof Error ? error.message : 'Failed to process document. Please try again.');
     reelRail.setLoading(false);
     reelsPlayer.setLoading(false);
     reelRail.setCooking(false);
+    importDialog.setButtonText(reelState.docId ? '+ Add more' : 'Upload another PDF or text');
+    importDialog.setMinimized(Boolean(reelState.docId));
   }
 }
 
-function handleStreamedReel(docId: string, reel: Reel): void {
-  syncDocReels(docId, [reel]);
+async function extractReadableTextFromFile(file: File): Promise<string> {
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    return extractTextFromPdf(file);
+  }
+
+  if (isTextLikeFile(file)) {
+    return file.text();
+  }
+
+  throw new Error('This file type is not supported yet. Use a PDF, plain text file, or pasted text.');
 }
 
-async function fetchAllReelsForDoc(docId: string): Promise<Reel[]> {
-  const allReels: Reel[] = [];
-  let offset = 0;
-
-  while (true) {
-    const page = await getReelPage(docId, offset, REEL_PAGE_LIMIT);
-    if (page.reels.length === 0) {
-      break;
-    }
-
-    allReels.push(...page.reels);
-
-    if (page.nextOffset === null) {
-      break;
-    }
-
-    offset = page.nextOffset;
-  }
-
-  return mergeReels([], allReels);
+function isTextLikeFile(file: File): boolean {
+  if (file.type.startsWith('text/')) return true;
+  return /\.(txt|md|markdown|csv|json|html?|xml)$/i.test(file.name);
 }
 
-async function finalizeStream(docId: string): Promise<void> {
-  if (stopReelPoll) {
-    stopReelPoll();
-    stopReelPoll = null;
-  }
-
-  if (reelState.docId !== docId) return;
-
-  stopReelStream = null;
-  reelRail.setLoading(false);
-  reelRail.setCooking(false);
-  reelsPlayer.setLoading(false);
-
-  try {
-    const allReels = await fetchAllReelsForDoc(docId);
-    if (allReels.length > 0) {
-      syncDocReels(docId, allReels);
-    }
-  } catch (error) {
-    console.warn('Failed to fetch full reel set after stream completion:', error);
-  }
-
-  const total = reelState.currentPage?.reels.length ?? 0;
-  reelsPlayer.updateStatus(total, true);
-
-  if (total === 0) {
-    reelRail.setStatus('No reels were generated.');
-    showEmptyReel();
-    return;
-  }
-
-  importDialog.setMinimized(true);
-  importDialog.setButtonText('+ Add more');
-
-  persistCurrentSession(docId, reelState.currentPage?.reels ?? [], reelState.activeReelId);
+function normalizeInputText(text: string): string {
+  return text.replace(/\r\n?/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-function mergeReels(existing: Reel[], incoming: Reel[]): Reel[] {
-  const merged = new Map<string, Reel>();
-
-  existing.forEach((reel) => {
-    merged.set(reel.reelId, reel);
-  });
-
-  incoming.forEach((reel) => {
-    merged.set(reel.reelId, reel);
-  });
-
-  return [...merged.values()].sort((a, b) => a.index - b.index);
+function countWords(text: string): number {
+  return (text.trim().match(/\S+/g) ?? []).length;
 }
 
-function syncDocReels(docId: string, incomingReels: Reel[]): void {
-  if (incomingReels.length === 0) return;
-
-  const cachedSession = sessionCache.get(docId);
-  const mergedReels = mergeReels(cachedSession?.reels ?? [], incomingReels);
-  const activeReelId =
-    reelState.docId === docId ? reelState.activeReelId : (cachedSession?.activeReelId ?? null);
-
-  persistCurrentSession(docId, mergedReels, activeReelId);
-  syncRailFromSessions({
-    currentUploadId: reelState.docId === docId ? docId : reelState.docId,
-    activeReelId: reelState.docId === docId ? reelState.activeReelId : reelState.activeReelId
-  });
-
-  if (reelState.docId !== docId) {
-    return;
+function createLocalDocId(): string {
+  if (typeof crypto.randomUUID === 'function') {
+    return `local-${crypto.randomUUID()}`;
   }
-
-  const currentPage = reelState.currentPage ?? {
-    docId,
-    totalReels: 0,
-    offset: 0,
-    limit: REEL_PAGE_LIMIT,
-    reels: [],
-    prevOffset: null,
-    nextOffset: null
-  };
-
-  reelState.currentPage = {
-    ...currentPage,
-    totalReels: mergedReels.length,
-    limit: Math.max(REEL_PAGE_LIMIT, mergedReels.length),
-    reels: mergedReels
-  };
-
-  reelRail.show();
-  reelRail.setLoading(false);
-  reelsPlayer.setLoading(false);
-
-  if (mergedReels.length > 0 && !reelState.activeReelId) {
-    reelsPlayer.clearReels();
-  }
-
-  mergedReels.forEach((reel) => {
-    reelsPlayer.addReel(reel);
-  });
-  reelsPlayer.updateStatus(mergedReels.length, false);
-
-  if (!reelState.activeReelId && mergedReels[0]) {
-    // First reel arrived — collapse the import button to its minimal pill form
-    importDialog.setMinimized(true);
-    importDialog.setButtonText('+ Add more');
-    selectReel(mergedReels[0], true);
-  }
-}
-
-function startReelPoll(docId: string): () => void {
-  let stopped = false;
-  let timer: number | null = null;
-
-  const tick = async (): Promise<void> => {
-    if (stopped) return;
-
-    try {
-      const [status, page] = await Promise.all([
-        getDocStatus(docId),
-        getReelPage(docId, 0, REEL_PAGE_LIMIT)
-      ]);
-
-      if (page.reels.length > 0) {
-        syncDocReels(docId, page.reels);
-      }
-
-      if (status.state === 'ready' || status.state === 'error') {
-        if (reelState.docId === docId) {
-          void finalizeStream(docId);
-        }
-        return;
-      }
-    } catch (error) {
-      console.warn('Reel polling fallback failed:', error);
-    }
-
-    if (!stopped) {
-      timer = window.setTimeout(() => {
-        void tick();
-      }, 400);
-    }
-  };
-
-  void tick();
-
-  return () => {
-    stopped = true;
-    if (timer !== null) {
-      window.clearTimeout(timer);
-      timer = null;
-    }
-  };
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 async function navigateToNextReel(): Promise<void> {
@@ -913,10 +823,9 @@ async function navigateToPreviousReel(): Promise<void> {
 }
 
 function showEmptyReel(): void {
-  reelsPlayer.showEmptyState(true, {
-    message: 'No reels yet — upload a PDF or paste text to get started.'
-  });
-  applyBackgroundAndTone(manualBackgroundId || 'intro');
+  reelsPlayer.showEmptyState(true);
+  reelsPlayer.setBackgroundCycleState(null);
+  applyBackgroundAndTone('intro');
   reader.pause();
 }
 
@@ -1001,22 +910,13 @@ function resetReelState(docId: string): void {
 }
 
 async function requestReelPage(offset: number): Promise<ReelPage> {
-  if (
-    reelState.currentPage &&
-    reelState.currentPage.offset === 0 &&
-    reelState.currentPage.reels.length === reelState.currentPage.totalReels &&
-    offset === 0
-  ) {
-    return reelState.currentPage;
-  }
-
   const cached = reelCache.get(offset);
   if (cached) return cached;
 
   const pending = reelRequests.get(offset);
   if (pending) return pending;
 
-  const request = getReelPage(reelState.docId, offset, REEL_PAGE_LIMIT).then((page) => {
+  const request = Promise.resolve(buildLocalReelPage(reelState.docId, offset, REEL_PAGE_LIMIT)).then((page) => {
     reelCache.set(page.offset, page);
     reelRequests.delete(offset);
     return page;
@@ -1027,6 +927,25 @@ async function requestReelPage(offset: number): Promise<ReelPage> {
 
   reelRequests.set(offset, request);
   return request;
+}
+
+function buildLocalReelPage(docId: string, offset: number, limit: number): ReelPage {
+  const session = sessionCache.get(docId);
+  const reels = session?.reels ?? [];
+  const boundedOffset = Math.max(0, Math.min(offset, Math.max(reels.length - 1, 0)));
+  const pageReels = reels.slice(boundedOffset, boundedOffset + limit);
+  const prevOffset = boundedOffset > 0 ? Math.max(0, boundedOffset - limit) : null;
+  const nextOffset = boundedOffset + limit < reels.length ? boundedOffset + limit : null;
+
+  return {
+    docId,
+    totalReels: reels.length,
+    offset: boundedOffset,
+    limit,
+    reels: pageReels,
+    prevOffset,
+    nextOffset
+  };
 }
 
 function prefetchPage(offset: number | null): void {
@@ -1065,16 +984,11 @@ function selectReel(reel: Reel, autoplay: boolean, scroll: boolean = true): void
     reelsPlayer.scrollToReel(reel.reelId);
   }
 
-  // Update central background (standard mode)
-  if (manualBackgroundId) {
-    applyBackgroundAndTone(manualBackgroundId);
-  } else if (activeStyle === 'cartoon') {
-    const cartoons = ['stickman', 'blobs', 'rain'];
-    const randomId = cartoons[Math.floor(Math.random() * cartoons.length)];
-    applyBackgroundAndTone(randomId);
-  } else if (activeStyle === 'calming') {
-    applyBackgroundAndTone(reel.backgroundId);
-  }
+  // Update central background (standard mode) from the reel's persisted background.
+  applyBackgroundAndTone(reel.backgroundId);
+  reelsPlayer.setBackgroundCycleState(
+    getBackgroundDefinition(reel.backgroundId)?.label ?? reel.backgroundLabel ?? reel.backgroundId
+  );
 
   const reelFrames = buildReelFrames(reel, currentChunkSize);
 
@@ -1121,6 +1035,72 @@ function buildReelFrames(reel: Reel, chunkSize: number): Frame[] {
   });
 
   return frames;
+}
+
+function updateActiveReelBackground(backgroundId: string): void {
+  const activeDocId = reelState.docId;
+  const activeReelId = reelState.activeReelId;
+  if (!activeDocId || !activeReelId) {
+    applyBackgroundAndTone(backgroundId);
+    return;
+  }
+
+  const definition = getBackgroundDefinition(backgroundId);
+  const updateReel = (reel: Reel): Reel => {
+    if (reel.reelId !== activeReelId) return reel;
+    return {
+      ...reel,
+      backgroundId,
+      backgroundModule: definition?.type ?? reel.backgroundModule,
+      backgroundLabel: definition?.label ?? reel.backgroundLabel,
+      backgroundDescription: `${definition?.label ?? reel.backgroundLabel} reading background`,
+      backgroundMoodTags: definition?.category ? [definition.category] : reel.backgroundMoodTags,
+      backgroundIntensity: definition?.type === 'video' ? 65 : reel.backgroundIntensity,
+      backgroundMotion: definition?.type === 'video' ? 'video loop' : reel.backgroundMotion,
+      backgroundPalette: definition?.textTone === 'dark' ? 'light' : 'dark',
+      backgroundNotes: 'User selected background'
+    };
+  };
+
+  if (reelState.currentPage?.docId === activeDocId) {
+    reelState.currentPage = {
+      ...reelState.currentPage,
+      reels: reelState.currentPage.reels.map(updateReel)
+    };
+  }
+
+  const session = sessionCache.get(activeDocId);
+  if (session) {
+    const updatedSession: StoredReelSession = {
+      ...session,
+      reels: session.reels.map(updateReel),
+      activeReelId,
+      updatedAt: new Date().toISOString()
+    };
+    sessionCache.set(activeDocId, updatedSession);
+    saveOrUpdateSession(updatedSession);
+    syncRailFromSessions({ currentUploadId: activeDocId, activeReelId });
+  }
+
+  reelsPlayer.setReelBackground(activeReelId, backgroundId);
+  applyBackgroundAndTone(backgroundId);
+  reelsPlayer.setBackgroundCycleState(definition?.label ?? backgroundId);
+}
+
+function cycleActiveReelBackground(): void {
+  const activeReel = reelState.currentPage?.reels.find((reel) => reel.reelId === reelState.activeReelId);
+  if (!activeReel || cyclableBackgrounds.length === 0) {
+    return;
+  }
+
+  const currentIndex = cyclableBackgrounds.findIndex((backgroundItem) => backgroundItem.id === activeReel.backgroundId);
+  const nextIndex = currentIndex >= 0
+    ? (currentIndex + 1) % cyclableBackgrounds.length
+    : 0;
+  const nextBackground = cyclableBackgrounds[nextIndex];
+  if (!nextBackground) return;
+
+  updateActiveReelBackground(nextBackground.id);
 }
 
 function persistCurrentSession(docId: string, reels: Reel[], activeReelId: string | null): void {

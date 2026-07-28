@@ -32,6 +32,6 @@ export type BackgroundDefinition = {
   url?: string; // For image/video
   thumbnail?: string;
   options?: Record<string, unknown>;
-  category?: 'calming' | 'cartoon' | 'real' | 'satisfying' | 'subway' | 'temple' | 'minecraft' | 'intro';
+  category?: 'calming' | 'cartoon' | 'real' | 'satisfying' | 'subway' | 'temple' | 'minecraft' | 'fortnite' | 'intro';
   textTone?: 'light' | 'dark';
 };

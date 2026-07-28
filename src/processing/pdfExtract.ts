@@ -1,12 +1,11 @@
-const PDFJS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
-const PDFJS_WORKER_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export async function extractTextFromPdf(file: File): Promise<string> {
-  const pdfjsLib = await import(/* @vite-ignore */ PDFJS_CDN);
-  (pdfjsLib as any).GlobalWorkerOptions.workerSrc = PDFJS_WORKER_CDN;
-
   const arrayBuffer = await file.arrayBuffer();
-  const loadingTask = (pdfjsLib as any).getDocument({ data: arrayBuffer });
+  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
   const pdf = await loadingTask.promise;
 
   const pages: string[] = [];

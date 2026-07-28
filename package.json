@@ -7,13 +7,17 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "backgrounds:sync": "bash scripts/sync-backgrounds-to-s3.sh",
+    "backgrounds:check": "bash scripts/check-backgrounds-s3.sh",
     "server:dev": "npm --prefix server run dev",
     "server:build": "npm --prefix server run build",
     "server:start": "npm --prefix server run start"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "gsap": "^3.14.2",
     "p5": "^1.9.0",
+    "pdfjs-dist": "^4.10.38",
     "three": "^0.124.0",
     "vanta": "^0.5.24"
   },

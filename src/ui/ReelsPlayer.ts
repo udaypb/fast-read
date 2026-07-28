@@ -20,10 +20,6 @@ export class ReelsPlayer {
 
     private loaderEl: HTMLElement;
     private loaderText: HTMLElement;
-    private statusEl: HTMLElement;
-    private statusText: HTMLElement;
-    private statusDot: HTMLElement;
-
     private progressContainer: HTMLElement;
     private progressBar: HTMLElement;
     private frameCounter: HTMLElement;
@@ -35,7 +31,6 @@ export class ReelsPlayer {
     private observer: IntersectionObserver;
     private onActiveReelChange?: (reelId: string) => void;
     private onWpmChange?: (wpm: number) => void;
-    private manualBackgroundId: string | null = null;
     private isInternalScroll = false;
     private _isDragging = false;
     private wpm = 250;
@@ -44,8 +39,11 @@ export class ReelsPlayer {
     private speedInput: HTMLInputElement;
     private compactPlayBtn: HTMLButtonElement;
     private deleteBtn: HTMLButtonElement;
+    private backgroundCycleControl: HTMLElement;
+    private backgroundCycleBtn: HTMLButtonElement;
+    private backgroundCycleLabel: HTMLElement;
     private onDelete?: () => void;
-    private onStatusClick?: () => void;
+    private onCycleBackground?: () => void;
     private onPreviewExpandChange?: (expanded: boolean) => void;
     private expandedReelId: string | null = null;
 
@@ -79,21 +77,8 @@ export class ReelsPlayer {
         this.loaderEl.appendChild(spinner);
         this.loaderEl.appendChild(this.loaderText);
 
-        // Status Bar
-        this.statusEl = document.createElement('div');
-        this.statusEl.className = 'reels-status-bar';
-        this.statusEl.style.opacity = '0'; // Hidden by default
-        this.statusDot = document.createElement('div');
-        this.statusDot.className = 'reels-status-dot';
-        this.statusText = document.createElement('div');
-        this.statusText.className = 'reels-status-text';
-        this.statusEl.appendChild(this.statusDot);
-        this.statusEl.appendChild(this.statusText);
-        this.statusEl.addEventListener('click', () => this.onStatusClick?.());
-
-        // Append loader and status bar directly to contentEl
+        // Append loader directly to contentEl
         this.contentEl.appendChild(this.loaderEl);
-        this.contentEl.appendChild(this.statusEl);
 
         // Pager container for vertical scrolling
         this.pager = document.createElement('div');
@@ -174,6 +159,28 @@ export class ReelsPlayer {
             this.onDelete?.();
         });
 
+        this.backgroundCycleControl = document.createElement('div');
+        this.backgroundCycleControl.className = 'reels-background-cycle reels-background-cycle--hidden';
+
+        this.backgroundCycleBtn = document.createElement('button');
+        this.backgroundCycleBtn.type = 'button';
+        this.backgroundCycleBtn.className = 'reels-background-cycle-btn';
+        this.backgroundCycleBtn.title = 'Change background';
+        this.backgroundCycleBtn.setAttribute('aria-label', 'Change reel background');
+        this.backgroundCycleBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 3.25a8.75 8.75 0 1 0 8.75 8.75A8.76 8.76 0 0 0 12 3.25Zm0 1.5a7.24 7.24 0 0 1 6.73 4.57A9.58 9.58 0 0 0 12 7.25a9.58 9.58 0 0 0-6.73 2.07A7.24 7.24 0 0 1 12 4.75Zm0 14.5a7.24 7.24 0 0 1-6.82-4.82A7.67 7.67 0 0 0 12 16.75a7.67 7.67 0 0 0 6.82-2.32A7.24 7.24 0 0 1 12 19.25Zm0-4a6.16 6.16 0 0 1-6.05-4.95A8.04 8.04 0 0 1 12 8.75a8.04 8.04 0 0 1 6.05 1.55A6.16 6.16 0 0 1 12 15.25Z"/>
+            </svg>
+        `;
+        this.backgroundCycleBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.onCycleBackground?.();
+        });
+
+        this.backgroundCycleLabel = document.createElement('div');
+        this.backgroundCycleLabel.className = 'reels-background-cycle-label';
+        this.backgroundCycleControl.append(this.backgroundCycleBtn, this.backgroundCycleLabel);
+
         speedShell.append(speedScale, speedRow);
         this.chunkControls.append(topRow, speedShell);
 
@@ -184,6 +191,7 @@ export class ReelsPlayer {
             this.frameCounter,
             this.playPauseIndicator,
             this.deleteBtn,
+            this.backgroundCycleControl,
             this.chunkControls,
             this.compactPlayBtn
         );
@@ -199,7 +207,7 @@ export class ReelsPlayer {
 
                 if (entry.isIntersecting) {
                     // Pre-warm background as soon as it enters
-                    screen.activate(this.manualBackgroundId);
+                    screen.activate();
                 } else {
                     // Cleanup when definitely gone
                     screen.deactivate();
@@ -231,31 +239,18 @@ export class ReelsPlayer {
         }
     }
 
-    updateStatus(count: number, isDone: boolean): void {
-        if (count === 0 && !isDone) {
-            this.statusEl.style.opacity = '0';
-            return;
-        }
-
-        this.statusEl.style.opacity = '1';
-        if (isDone) {
-            this.statusText.textContent = `${count} reels available`;
-            this.statusDot.classList.remove('pulsing');
-            this.statusDot.style.background = '#4CAF50'; // Green for done
-        } else {
-            this.statusText.textContent = `${count} reels generated...`;
-            this.statusDot.classList.add('pulsing');
-            this.statusDot.style.background = 'var(--accent)';
-        }
+    updateStatus(_count: number, _isDone: boolean): void {
+        // The status pill was intentionally removed; keep this method as a no-op
+        // so processing flows can continue to report status without rendering UI.
     }
     // ... (keep existing methods up to playTransition)
     showEmptyState(show: boolean, options?: { message?: string }): void {
         this.isEmptyState = show;
 
-        const emptyStateMessage = options?.message ?? 'No reels yet — paste text or upload a PDF to get started.';
+        const emptyStateMessage = options?.message ?? '';
 
         if (show) {
-            // Ensure an empty screen always exists so we never land on a blank black view.
+            // Keep a placeholder screen so the background and pager layout stay stable.
             // This guards against edge cases where screens exist but no active screen is set.
             const activeScreen = this.activeReelId ? this.screens.get(this.activeReelId) : null;
             if (!activeScreen) {
@@ -275,7 +270,7 @@ export class ReelsPlayer {
         }
 
         if (show && this.screens.size === 0) {
-            // Create a temporary empty screen so we can show the "No reels" message and background
+            // Create a temporary empty screen so the background remains mounted.
             const emptyReel = {
                 reelId: 'empty',
                 title: 'Empty',
@@ -289,7 +284,7 @@ export class ReelsPlayer {
             this.activeReelId = 'empty';
             const screen = this.screens.get('empty');
             if (screen) {
-                screen.activate('intro');
+                screen.activate();
                 screen.setTextContent(emptyStateMessage);
                 screen.addTextClass('reels-player-text--empty');
             }
@@ -299,6 +294,10 @@ export class ReelsPlayer {
         const activeScreen = this.activeReelId ? this.screens.get(this.activeReelId) : null;
 
         this.contentEl.classList.toggle('reels-empty-state', show);
+        if (show) {
+            this.compactPlayBtn.classList.remove('reels-compact-play-btn--ready');
+            this.setBackgroundCycleState(null);
+        }
 
         if (show) {
             if (activeScreen) {
@@ -315,11 +314,10 @@ export class ReelsPlayer {
         }
     }
 
-    public setManualBackground(id: string | null): void {
-        this.manualBackgroundId = id;
-        const active = this.activeReelId ? this.screens.get(this.activeReelId) : null;
-        if (active) {
-            active.activate(this.manualBackgroundId);
+    public setReelBackground(reelId: string, backgroundId: string): void {
+        const screen = this.screens.get(reelId);
+        if (screen) {
+            screen.setBackgroundId(backgroundId);
         }
     }
 
@@ -342,7 +340,7 @@ export class ReelsPlayer {
 
         if (!this.activeReelId) {
             this.activeReelId = reel.reelId;
-            screen.activate(this.manualBackgroundId);
+            screen.activate();
         }
     }
 
@@ -393,6 +391,8 @@ export class ReelsPlayer {
     setPlaying(playing: boolean): void {
         this.playPauseBtn.innerHTML = playing ? '<span>⏸</span>' : '<span>▶</span>';
         this.compactPlayBtn.innerHTML = playing ? '<span>⏸</span>' : '<span>▶</span>';
+        const hasPlayableReel = !this.isEmptyState && Boolean(this.activeReelId) && this.activeReelId !== 'empty';
+        this.compactPlayBtn.classList.toggle('reels-compact-play-btn--ready', hasPlayableReel && !playing);
     }
 
     public showPlayPauseIndicator(playing: boolean): void {
@@ -538,7 +538,7 @@ export class ReelsPlayer {
         onWpmChange?: (wpm: number) => void;
         onActiveReelChange?: (reelId: string) => void;
         onDelete?: () => void;
-        onStatusClick?: () => void;
+        onCycleBackground?: () => void;
         onPreviewExpandChange?: (expanded: boolean) => void;
     }): void {
         this.onPlayPause = handler.onPlayPause;
@@ -546,8 +546,22 @@ export class ReelsPlayer {
         this.onWpmChange = handler.onWpmChange;
         this.onActiveReelChange = handler.onActiveReelChange;
         this.onDelete = handler.onDelete;
-        this.onStatusClick = handler.onStatusClick;
+        this.onCycleBackground = handler.onCycleBackground;
         this.onPreviewExpandChange = handler.onPreviewExpandChange;
+    }
+
+    setBackgroundCycleState(label: string | null): void {
+        const hidden = !label;
+        this.backgroundCycleControl.classList.toggle('reels-background-cycle--hidden', hidden);
+        this.backgroundCycleBtn.disabled = hidden;
+        this.backgroundCycleLabel.textContent = label ? this.formatBackgroundLabel(label) : '';
+        this.backgroundCycleLabel.title = label ?? '';
+    }
+
+    private formatBackgroundLabel(label: string): string {
+        const trimmed = label.trim();
+        if (trimmed.length <= 14) return trimmed;
+        return `....${trimmed.slice(-10)}`;
     }
 
     setWpm(wpm: number): void {
@@ -612,6 +626,8 @@ class ReelScreen {
     private textWindow: HTMLElement;
     private textClipEl: HTMLElement;
     private textEl: HTMLElement;
+    private playedProgressEl: HTMLElement;
+    private playedProgressFillEl: HTMLElement;
     private previewEl: HTMLElement;
     private previewTokenEls: HTMLElement[] = [];
     private resizeObserver: ResizeObserver;
@@ -668,6 +684,18 @@ class ReelScreen {
         const bottomBar = document.createElement('div');
         bottomBar.className = 'reels-player-bar reels-player-bar-bottom';
 
+        this.playedProgressEl = document.createElement('div');
+        this.playedProgressEl.className = 'reels-player-text-progress';
+        this.playedProgressEl.setAttribute('role', 'progressbar');
+        this.playedProgressEl.setAttribute('aria-label', 'Reel text played');
+        this.playedProgressEl.setAttribute('aria-valuemin', '0');
+        this.playedProgressEl.setAttribute('aria-valuemax', '100');
+        this.playedProgressEl.setAttribute('aria-valuenow', '0');
+
+        this.playedProgressFillEl = document.createElement('div');
+        this.playedProgressFillEl.className = 'reels-player-text-progress-fill';
+        this.playedProgressEl.append(this.playedProgressFillEl);
+
         this.textClipEl = document.createElement('div');
         this.textClipEl.className = 'reels-player-text-clip';
 
@@ -692,7 +720,7 @@ class ReelScreen {
         windowHeader.append(this.expandBtn);
 
         this.textClipEl.append(this.textEl);
-        this.textWindow.append(topBar, windowHeader, this.textClipEl, this.previewEl, bottomBar);
+        this.textWindow.append(topBar, windowHeader, this.textClipEl, this.previewEl, bottomBar, this.playedProgressEl);
 
         this.characterOverlay = document.createElement('div');
         this.characterOverlay.className = 'reel-character-overlay';
@@ -723,11 +751,19 @@ class ReelScreen {
         return this.backgroundContainer;
     }
 
-    activate(manualStyleId: string | null): void {
+    activate(): void {
         const styleId = (this.reel.reelId === 'empty')
-            ? (manualStyleId || 'intro')
-            : (manualStyleId || this.reel.backgroundId || 'net');
+            ? 'intro'
+            : (this.reel.backgroundId || 'net');
         this.background.start(styleId);
+    }
+
+    setBackgroundId(backgroundId: string): void {
+        this.reel = {
+            ...this.reel,
+            backgroundId
+        };
+        this.activate();
     }
 
     deactivate(): void {
@@ -738,12 +774,14 @@ class ReelScreen {
         if (!frame) {
             this.textEl.textContent = '';
             this.updatePreviewHighlight(null);
+            this.updatePlayedProgress(null);
             this.clearCharacter();
             return;
         }
         this.textEl.textContent = frame.tokens.map((token) => token.text).join(' ');
         this.fitTextToWindow();
         this.updatePreviewHighlight(frame);
+        this.updatePlayedProgress(frame);
 
         this.updateCharacterFromFrame(frame);
     }
@@ -751,6 +789,7 @@ class ReelScreen {
     setTextContent(text: string): void {
         this.textEl.textContent = text;
         this.renderPreviewTokens(text);
+        this.updatePlayedProgress(null);
         this.fitTextToWindow();
     }
 
@@ -867,6 +906,17 @@ class ReelScreen {
                 inline: 'nearest'
             });
         }
+    }
+
+    private updatePlayedProgress(frame: Frame | null): void {
+        const totalTokens = this.previewTokenEls.length;
+        const playedTokens = frame ? Math.min(frame.endTokenIndex + 1, totalTokens) : 0;
+        const percentage = totalTokens > 0 ? Math.max(0, Math.min(100, (playedTokens / totalTokens) * 100)) : 0;
+        const roundedPercentage = Math.round(percentage);
+
+        this.playedProgressFillEl.style.width = `${percentage}%`;
+        this.playedProgressEl.setAttribute('aria-valuenow', String(roundedPercentage));
+        this.playedProgressEl.title = `${roundedPercentage}% played`;
     }
 
     private fitTextToWindow(): void {

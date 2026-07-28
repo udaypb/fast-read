@@ -24,7 +24,7 @@ export class ImportDialog {
     this.mainButton = document.createElement('button');
     this.mainButton.type = 'button';
     this.mainButton.className = 'import-button';
-    this.mainButton.textContent = 'Import PDF or Text';
+    this.mainButton.textContent = 'Import File or Text';
 
     this.overlay = document.createElement('div');
     this.overlay.className = 'import-overlay';
@@ -51,16 +51,16 @@ export class ImportDialog {
 
     const fileLabel = document.createElement('div');
     fileLabel.className = 'import-label';
-    fileLabel.textContent = 'Upload a PDF';
+    fileLabel.textContent = 'Upload a PDF or text document';
 
     const fileButton = document.createElement('button');
     fileButton.type = 'button';
     fileButton.className = 'import-action';
-    fileButton.textContent = 'Choose PDF File';
+    fileButton.textContent = 'Choose File';
 
     this.fileInput = document.createElement('input');
     this.fileInput.type = 'file';
-    this.fileInput.accept = 'application/pdf';
+    this.fileInput.accept = 'application/pdf,text/*,.txt,.md,.markdown,.csv,.json,.html,.htm,.xml';
     this.fileInput.className = 'import-file-input';
 
     fileSection.append(fileLabel, fileButton, this.fileInput);
