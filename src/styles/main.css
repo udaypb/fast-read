@@ -2122,11 +2122,11 @@ body.settings-sheet-open .import-root {
 }
 
 .reels-background-cycle {
-  position: fixed;
+  position: absolute;
   top: max(14px, calc(env(safe-area-inset-top, 0px) + 14px));
   right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
   bottom: auto;
-  z-index: 2147483000;
+  z-index: 140;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3489,6 +3489,7 @@ body.mode-portrait .settings-reel-section {
   }
 
   .reels-background-cycle {
+    position: absolute;
     top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px));
     right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
     bottom: auto;
