@@ -169,14 +169,7 @@ settingsPanel.bind({
     }
   },
   onDeleteGroup: (docId) => {
-    if (reelState.docId !== docId) {
-      const session = sessionCache.get(docId);
-      if (!session) {
-        return;
-      }
-      restoreSession(session);
-    }
-    void deleteActiveReelGroup();
+    void deleteReelGroup(docId);
   }
 });
 
@@ -504,65 +497,10 @@ function confirmDeletion(options: { title: string; message: string; confirmLabel
   return confirmDialog.open(options);
 }
 
-async function deleteActiveReelGroup(options?: { skipConfirm?: boolean }): Promise<void> {
-  const docId = reelState.docId;
-  if (!docId) {
-    return;
-  }
-
-  if (!options?.skipConfirm) {
-    const session = sessionCache.get(docId);
-    const label = session?.label || 'this reel group';
-    const confirmed = await confirmDeletion({
-      title: 'Delete Reel Group?',
-      message: `Remove ${label} and all reels in it from this session?`,
-      confirmLabel: 'Delete group'
-    });
-    if (!confirmed) {
-      return;
-    }
-  }
-
-  closeReelStream();
-  sessionCache.delete(docId);
-  deleteStoredSession(docId);
-  reelState.documentCount = sessionCache.size;
-  reelRail.setLoading(false);
-  reelRail.setCooking(false);
-
-  const nextSession = getLatestStoredSession();
-  if (nextSession) {
-    restoreSession(nextSession);
-    return;
-  }
-
-  resetReelState('');
-  syncDeleteAvailability();
-  reelRail.setStatus('Upload a PDF or paste text to load reels.');
-  reelRail.hide();
-  importDialog.setMinimized(false);
-  importDialog.setButtonText('Upload another PDF or text');
-  showEmptyReel();
-}
-
-async function clearAllReadingData(): Promise<void> {
-  const confirmed = await confirmDeletion({
-    title: 'Clear All Reading Data?',
-    message: 'Remove every saved upload and reel from this browser?',
-    confirmLabel: 'Clear all'
-  });
-  if (!confirmed) {
-    return;
-  }
-
+function showNoUploadedContentState(): void {
   reader.pause();
-  closeReelStream();
-  sessionCache.clear();
-  clearStoredSessions();
-  reelState.documentCount = 0;
   activeSessionCreatedAt = new Date().toISOString();
   activeText = SAMPLE_TEXT;
-
   resetReelState('');
   syncDeleteAvailability();
   syncRailFromSessions({ currentUploadId: null, activeReelId: null });
@@ -576,6 +514,80 @@ async function clearAllReadingData(): Promise<void> {
   importDialog.setButtonText('Upload another PDF or text');
   settingsPanel.close();
   showEmptyReel();
+}
+
+async function deleteReelGroup(docId: string, options?: { skipConfirm?: boolean }): Promise<void> {
+  if (!docId) {
+    return;
+  }
+
+  const session = sessionCache.get(docId);
+  if (!session) {
+    return;
+  }
+
+  if (!options?.skipConfirm) {
+    const label = session.label || 'this reel group';
+    const confirmed = await confirmDeletion({
+      title: 'Delete Reel Group?',
+      message: `Remove ${label} and all reels in it from this session?`,
+      confirmLabel: 'Delete group'
+    });
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  const wasActiveGroup = reelState.docId === docId;
+  if (wasActiveGroup) {
+    closeReelStream();
+  }
+
+  sessionCache.delete(docId);
+  deleteStoredSession(docId);
+  reelState.documentCount = sessionCache.size;
+  reelRail.setLoading(false);
+  reelRail.setCooking(false);
+
+  if (sessionCache.size === 0) {
+    showNoUploadedContentState();
+    return;
+  }
+
+  if (wasActiveGroup) {
+    const nextSession = getLatestStoredSession();
+    if (nextSession) {
+      restoreSession(nextSession);
+    }
+    return;
+  }
+
+  syncRailFromSessions({
+    currentUploadId: reelState.docId,
+    activeReelId: reelState.activeReelId
+  });
+  syncDeleteAvailability();
+}
+
+async function deleteActiveReelGroup(options?: { skipConfirm?: boolean }): Promise<void> {
+  await deleteReelGroup(reelState.docId, options);
+}
+
+async function clearAllReadingData(): Promise<void> {
+  const confirmed = await confirmDeletion({
+    title: 'Clear All Reading Data?',
+    message: 'Remove every saved upload and reel from this browser?',
+    confirmLabel: 'Clear all'
+  });
+  if (!confirmed) {
+    return;
+  }
+
+  closeReelStream();
+  sessionCache.clear();
+  clearStoredSessions();
+  reelState.documentCount = 0;
+  showNoUploadedContentState();
 }
 
 function normalizeSessionReels(reels: Reel[]): Reel[] {
