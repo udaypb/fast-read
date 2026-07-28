@@ -39,6 +39,23 @@ if (!app) {
 }
 document.body.classList.add('mode-portrait');
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
+function preventNativePageGesture(event: Event): void {
+  if (isEditableTarget(event.target)) return;
+  event.preventDefault();
+}
+
+document.addEventListener('dblclick', preventNativePageGesture, { capture: true });
+document.addEventListener('selectstart', preventNativePageGesture, { capture: true });
+document.addEventListener('dragstart', preventNativePageGesture, { capture: true });
+document.addEventListener('contextmenu', preventNativePageGesture, { capture: true });
+document.addEventListener('gesturestart', preventNativePageGesture, { capture: true, passive: false });
+document.addEventListener('gesturechange', preventNativePageGesture, { capture: true, passive: false });
+document.addEventListener('gestureend', preventNativePageGesture, { capture: true, passive: false });
+
 const background = new Background(app);
 background.start();
 const confirmDialog = new ConfirmDialog();

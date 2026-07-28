@@ -262,6 +262,7 @@ body.mode-portrait .style-selector-content>div {
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -269,6 +270,10 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -276,6 +281,10 @@ body {
   color: var(--text);
   font-family: var(--font-ui);
   letter-spacing: 0.01em;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior: none;
 }
 
 body[data-text-tone='dark'] {
@@ -300,13 +309,30 @@ body[data-text-tone='light'] {
   --reading-bar-glow: rgba(0, 0, 0, 0.18);
 }
 
-/* Disable text selection in standard + reel modes (allow exceptions below) */
-body.mode-standard,
-body.mode-standard *,
-body.mode-portrait,
-body.mode-portrait * {
+#app,
+#app * {
+  -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+button,
+[role='button'],
+input,
+textarea,
+select,
+.reels-pager,
+.settings-panel,
+.settings-panel-content,
+.reels-player-preview {
+  touch-action: manipulation;
+}
+
+input,
+textarea,
+select {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .bg-layer {
@@ -335,6 +361,8 @@ body.mode-portrait * {
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 1;
+  touch-action: manipulation;
+  -webkit-user-drag: none;
 }
 
 /* Intro Sequence */
@@ -1087,18 +1115,9 @@ body.mode-standard .controls-stack {
   color: #fff;
 }
 
-/* Allow selection in import PDF + text entry UI */
-.import-overlay,
-.import-panel,
-.import-title,
-.import-label,
-.import-action,
+/* Keep only real text entry controls editable/selectable. */
 .import-textarea,
-.import-meta,
-.import-count,
-.import-error,
-.import-close,
-.import-button {
+.import-file-input {
   -webkit-user-select: text;
   user-select: text;
 }
