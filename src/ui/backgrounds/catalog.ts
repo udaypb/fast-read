@@ -419,3 +419,22 @@ export const backgroundCatalog: BackgroundDefinition[] = [
 export function getBackgroundDefinition(id: string): BackgroundDefinition | undefined {
   return backgroundCatalog.find((item) => item.id === id);
 }
+
+export function getBackgroundTextTone(id: string): 'light' | 'dark' {
+  const definition = getBackgroundDefinition(id);
+  if (definition?.textTone) return definition.textTone;
+
+  const thumbnailHex = definition?.thumbnail?.match(/placehold\.co\/\d+x\d+\/([0-9a-fA-F]{3,6})\//)?.[1];
+  if (!thumbnailHex) return 'light';
+
+  const normalized = thumbnailHex.length === 3
+    ? thumbnailHex.split('').map((char) => `${char}${char}`).join('')
+    : thumbnailHex;
+
+  const red = Number.parseInt(normalized.slice(0, 2), 16) / 255;
+  const green = Number.parseInt(normalized.slice(2, 4), 16) / 255;
+  const blue = Number.parseInt(normalized.slice(4, 6), 16) / 255;
+  const luminance = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
+
+  return luminance > 0.46 ? 'dark' : 'light';
+}

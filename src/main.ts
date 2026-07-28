@@ -25,7 +25,7 @@ import { ReelRail } from './ui/ReelRail';
 import { SettingsPanel, type ReelGroup } from './ui/SettingsPanel';
 import { ReelsPlayer, DisplayMode } from './ui/ReelsPlayer';
 import { SettingsButton } from './ui/SettingsButton';
-import { backgroundCatalog, getBackgroundDefinition } from './ui/backgrounds/catalog';
+import { backgroundCatalog, getBackgroundDefinition, getBackgroundTextTone } from './ui/backgrounds/catalog';
 import { BackgroundType } from './ui/backgrounds/types';
 
 inject();
@@ -105,10 +105,8 @@ function setReadingTextTone(tone?: 'light' | 'dark'): void {
 }
 
 function applyBackgroundAndTone(styleId: string, options?: { allowManualTone?: boolean }): void {
-  const definition = getBackgroundDefinition(styleId);
-  const tone = definition?.textTone;
   if (options?.allowManualTone !== false) {
-    setReadingTextTone(tone);
+    setReadingTextTone(getBackgroundTextTone(styleId));
   }
   void background.setStyle(styleId);
 }
@@ -1074,7 +1072,7 @@ function updateActiveReelBackground(backgroundId: string): void {
       backgroundMoodTags: definition?.category ? [definition.category] : reel.backgroundMoodTags,
       backgroundIntensity: definition?.type === 'video' ? 65 : reel.backgroundIntensity,
       backgroundMotion: definition?.type === 'video' ? 'video loop' : reel.backgroundMotion,
-      backgroundPalette: definition?.textTone === 'dark' ? 'light' : 'dark',
+      backgroundPalette: getBackgroundTextTone(backgroundId) === 'dark' ? 'light' : 'dark',
       backgroundNotes: 'User selected background'
     };
   };

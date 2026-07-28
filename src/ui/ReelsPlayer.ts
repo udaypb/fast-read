@@ -155,15 +155,12 @@ export class ReelsPlayer {
         this.backgroundCycleBtn.setAttribute('aria-label', 'Change reel background');
         this.backgroundCycleBtn.innerHTML = `
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4.75 7.25A2.5 2.5 0 0 1 7.25 4.75h8.5a2.5 2.5 0 0 1 2.5 2.5v5.1" />
-                <path d="M4.75 15.2V7.25" />
-                <path d="M4.95 14.2l3.2-3.2a1.55 1.55 0 0 1 2.2 0l1.32 1.32 1.78-1.78a1.55 1.55 0 0 1 2.2 0l2.16 2.16" />
-                <path d="M8.45 8.05h.01" />
-                <path d="M6.75 18.25h7.7" />
-                <path d="M17.45 14.25h2.8v-2.8" />
-                <path d="M20.25 14.25a4.65 4.65 0 0 0-7.72-2.32" />
-                <path d="M15.55 20.25h-2.8v2.8" />
-                <path d="M12.75 20.25a4.65 4.65 0 0 0 7.72 2.32" />
+                <path d="M16.5 3.75h3.75v3.75" />
+                <path d="M3.75 7.5h2.06c1.2 0 2.3.67 2.86 1.73l2.66 5.04A3.24 3.24 0 0 0 14.19 16h1.81" />
+                <path d="M20.25 16.5h-3.75v-3.75" />
+                <path d="M20.25 3.75l-4.2 4.2" />
+                <path d="M3.75 16.5h2.06c1.2 0 2.3-.67 2.86-1.73l.45-.86" />
+                <path d="M13.64 9.27l.69-1.31A3.24 3.24 0 0 1 17.19 6.25h2.31" />
             </svg>
         `;
         this.backgroundCycleBtn.addEventListener('click', (event) => {
@@ -173,7 +170,10 @@ export class ReelsPlayer {
 
         this.backgroundCycleLabel = document.createElement('div');
         this.backgroundCycleLabel.className = 'reels-background-cycle-label';
-        this.backgroundCycleControl.append(this.backgroundCycleBtn, this.backgroundCycleLabel);
+        const backgroundCycleTitle = document.createElement('div');
+        backgroundCycleTitle.className = 'reels-background-cycle-title';
+        backgroundCycleTitle.textContent = 'Background';
+        this.backgroundCycleControl.append(this.backgroundCycleBtn, backgroundCycleTitle, this.backgroundCycleLabel);
 
         this.chunkControls.append(speedStepper);
 
