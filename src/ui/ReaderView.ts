@@ -1,4 +1,5 @@
 import type { Frame } from '../reader/types';
+import { renderFrameWithFocusAnchor } from './focusAnchor';
 
 export class ReaderView {
   private root: HTMLElement;
@@ -37,7 +38,7 @@ export class ReaderView {
   }
 
   setFrame(frame: Frame | null): void {
-    this.textEl.textContent = frame ? frame.tokens.map((token) => token.text).join(' ') : '';
+    this.textEl.innerHTML = renderFrameWithFocusAnchor(frame);
     this.fitTextToWindow();
   }
 

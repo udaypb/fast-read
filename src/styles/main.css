@@ -623,6 +623,23 @@ body.mode-standard .reader-bar {
   text-shadow: var(--reading-text-shadow);
 }
 
+.reading-focus-token {
+  display: inline-block;
+}
+
+.reading-focus-token--active {
+  color: inherit;
+}
+
+.reading-focus-anchor {
+  color: #f43f5e;
+  text-shadow: 0 0 14px rgba(244, 63, 94, 0.28);
+}
+
+.reading-focus-space {
+  white-space: pre;
+}
+
 .controls-stack {
   position: relative;
   z-index: 200;

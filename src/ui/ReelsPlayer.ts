@@ -2,6 +2,7 @@ import { gsap } from 'gsap';
 import type { Frame } from '../reader/types';
 import type { Reel, CharacterAsset, CharacterLine } from '../api/types';
 import { Background } from './Background';
+import { renderFrameWithFocusAnchor } from './focusAnchor';
 import { tokenize } from '../reader/Tokenizer';
 
 export enum DisplayMode {
@@ -853,13 +854,13 @@ class ReelScreen {
 
     setFrame(frame: Frame | null): void {
         if (!frame) {
-            this.textEl.textContent = '';
+            this.textEl.innerHTML = '';
             this.updatePreviewHighlight(null);
             this.updatePlayedProgress(null);
             this.clearCharacter();
             return;
         }
-        this.textEl.textContent = frame.tokens.map((token) => token.text).join(' ');
+        this.textEl.innerHTML = renderFrameWithFocusAnchor(frame);
         this.fitTextToWindow();
         this.updatePreviewHighlight(frame);
         this.updatePlayedProgress(frame);
