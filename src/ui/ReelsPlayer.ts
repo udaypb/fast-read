@@ -39,6 +39,9 @@ export class ReelsPlayer {
     private speedMinusBtn: HTMLButtonElement;
     private speedPlusBtn: HTMLButtonElement;
     private compactPlayBtn: HTMLButtonElement;
+    private compactRewindBtn: HTMLButtonElement;
+    private compactForwardBtn: HTMLButtonElement;
+    private seekIndicator: HTMLElement;
     private deleteBtn: HTMLButtonElement;
     private backgroundCycleControl: HTMLElement;
     private backgroundCycleBtn: HTMLButtonElement;
@@ -100,6 +103,9 @@ export class ReelsPlayer {
         this.playPauseIndicator = document.createElement('div');
         this.playPauseIndicator.className = 'reels-center-indicator';
 
+        this.seekIndicator = document.createElement('div');
+        this.seekIndicator.className = 'reels-seek-indicator';
+
         this.chunkControls = document.createElement('div');
         this.chunkControls.className = 'reels-chunk-controls';
 
@@ -132,6 +138,17 @@ export class ReelsPlayer {
         this.compactPlayBtn.addEventListener('click', (event) => {
             event.stopPropagation();
             this.onPlayPause?.();
+        });
+
+        this.compactRewindBtn = this.createCompactSeekButton('rewind');
+        this.compactForwardBtn = this.createCompactSeekButton('forward');
+        this.compactRewindBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.seekWithFeedback(-1);
+        });
+        this.compactForwardBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.seekWithFeedback(1);
         });
 
         this.deleteBtn = document.createElement('button');
@@ -181,9 +198,12 @@ export class ReelsPlayer {
             this.progressContainer,
             this.frameCounter,
             this.playPauseIndicator,
+            this.seekIndicator,
             this.deleteBtn,
             this.backgroundCycleControl,
             this.chunkControls,
+            this.compactRewindBtn,
+            this.compactForwardBtn,
             this.compactPlayBtn
         );
 
@@ -402,6 +422,44 @@ export class ReelsPlayer {
         return icon;
     }
 
+    private createCompactSeekButton(direction: 'rewind' | 'forward'): HTMLButtonElement {
+        const btn = document.createElement('button');
+        const delta = direction === 'rewind' ? -1 : 1;
+        btn.type = 'button';
+        btn.className = `reels-compact-seek-btn reels-compact-seek-btn--${direction}`;
+        btn.title = direction === 'rewind' ? 'Rewind' : 'Forward';
+        btn.setAttribute('aria-label', direction === 'rewind' ? 'Rewind one frame' : 'Forward one frame');
+        btn.innerHTML = this.createSeekIconMarkup(delta);
+        return btn;
+    }
+
+    private createSeekIconMarkup(delta: number): string {
+        const transform = delta < 0 ? '' : 'transform="translate(24 0) scale(-1 1)"';
+        return `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <g ${transform}>
+                    <path d="M8.25 8.25a6.25 6.25 0 1 1 .25 7.7" />
+                    <path d="M8.25 4.95v3.3h3.3" />
+                </g>
+            </svg>
+        `;
+    }
+
+    private seekWithFeedback(delta: number): void {
+        this.onSeek?.(delta);
+        this.showSeekIndicator(delta);
+    }
+
+    private showSeekIndicator(delta: number): void {
+        this.seekIndicator.className = `reels-seek-indicator reels-seek-indicator--${delta < 0 ? 'rewind' : 'forward'}`;
+        this.seekIndicator.innerHTML = `
+            ${this.createSeekIconMarkup(delta)}
+            <span>${delta < 0 ? 'REWIND' : 'FORWARD'}</span>
+        `;
+        void this.seekIndicator.offsetWidth;
+        this.seekIndicator.classList.add('animate');
+    }
+
     public showPlayPauseIndicator(playing: boolean): void {
         this.playPauseIndicator.replaceChildren(this.createPlayIcon(!playing));
 
@@ -529,7 +587,7 @@ export class ReelsPlayer {
                     this.onPlayPause?.();
                 } else {
                     const delta = isLeft ? -1 : 1;
-                    this.onSeek?.(delta);
+                    this.seekWithFeedback(delta);
                 }
             }
         };

@@ -2085,6 +2085,58 @@ body.settings-sheet-open .import-root {
   text-transform: uppercase;
 }
 
+.reels-compact-seek-btn {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
+  top: auto;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--reel-ui-border);
+  border-radius: 50%;
+  background: var(--reel-ui-surface);
+  color: var(--reel-ui-foreground);
+  cursor: pointer;
+  z-index: 130;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: 0 6px 18px var(--reel-ui-shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.reels-compact-seek-btn--rewind {
+  left: calc(50% - 96px);
+}
+
+.reels-compact-seek-btn--forward {
+  right: calc(50% - 96px);
+}
+
+.reels-compact-seek-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.reels-compact-seek-btn:hover {
+  transform: translateY(-1px) scale(1.04);
+  border-color: color-mix(in srgb, var(--reel-ui-accent-strong) 32%, transparent);
+  background: color-mix(in srgb, var(--reel-ui-surface) 82%, var(--reel-ui-foreground) 18%);
+}
+
+.reels-compact-seek-btn:active {
+  transform: scale(0.94);
+}
+
 .reels-compact-play-btn {
   position: absolute;
   left: 50%;
@@ -2493,8 +2545,79 @@ body.settings-sheet-open .import-root {
   transform: scale(1.35);
 }
 
+.reels-seek-indicator {
+  position: absolute;
+  top: 50%;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 50%;
+  background: var(--reel-ui-accent-strong);
+  color: var(--reel-ui-on-accent);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 101;
+  transform: translateY(-50%) scale(0.82);
+  box-shadow: 0 14px 42px color-mix(in srgb, var(--reel-ui-accent-strong) 28%, transparent);
+}
+
+.reels-seek-indicator--rewind {
+  left: 17%;
+}
+
+.reels-seek-indicator--forward {
+  right: 17%;
+}
+
+.reels-seek-indicator svg {
+  width: 31px;
+  height: 31px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.reels-seek-indicator span {
+  font-family: var(--font-ui);
+  font-size: 0.54rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.reels-seek-indicator.animate {
+  animation: reelSeekIndicatorFade 0.78s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+
 .reels-center-indicator.animate {
   animation: reelIndicatorFade 0.8s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+
+@keyframes reelSeekIndicatorFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.78);
+  }
+
+  24% {
+    opacity: 0.92;
+    transform: translateY(-50%) scale(1.06);
+  }
+
+  58% {
+    opacity: 0.9;
+    transform: translateY(-50%) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.9);
+  }
 }
 
 @keyframes reelIndicatorFade {
@@ -2685,6 +2808,8 @@ body.mode-standard .controls-stack .settings-button {
 .reels-player-content.settings-open .settings-button,
 .reels-player-content.settings-open .reels-delete-btn,
 .reels-player-content.settings-open .reels-compact-play-btn,
+.reels-player-content.settings-open .reels-compact-seek-btn,
+.reels-player-content.settings-open .reels-seek-indicator,
 .reels-player-content.settings-open .reels-background-cycle,
 .reels-player-content.settings-open .reels-chunk-controls,
 .reels-player-content.settings-open .reader-upload-switcher-shell,
@@ -2698,6 +2823,8 @@ body.mode-standard .controls-stack .settings-button {
 
 /* Empty state: hide all playback controls so they don't clutter the landing view */
 .reels-player-content.reels-empty-state .reels-compact-play-btn,
+.reels-player-content.reels-empty-state .reels-compact-seek-btn,
+.reels-player-content.reels-empty-state .reels-seek-indicator,
 .reels-player-content.reels-empty-state .reels-background-cycle,
 .reels-player-content.reels-empty-state .reels-chunk-controls,
 .reels-player-content.reels-empty-state .reels-delete-btn,
