@@ -36,7 +36,8 @@ export class ReelsPlayer {
     private wpm = 250;
     private chunkControls: HTMLElement;
     private chunkValueEl: HTMLElement;
-    private speedInput: HTMLInputElement;
+    private speedMinusBtn: HTMLButtonElement;
+    private speedPlusBtn: HTMLButtonElement;
     private compactPlayBtn: HTMLButtonElement;
     private deleteBtn: HTMLButtonElement;
     private backgroundCycleControl: HTMLElement;
@@ -102,42 +103,27 @@ export class ReelsPlayer {
         this.chunkControls = document.createElement('div');
         this.chunkControls.className = 'reels-chunk-controls';
 
-        const topRow = document.createElement('div');
-        topRow.className = 'reels-chunk-row';
-
-        const speedLabel = document.createElement('div');
-        speedLabel.className = 'reels-chunk-label';
-        speedLabel.textContent = 'Speed';
-
         this.chunkValueEl = document.createElement('div');
         this.chunkValueEl.className = 'reels-chunk-value';
         this.chunkValueEl.textContent = `${this.wpm} WPM`;
-        topRow.append(speedLabel, this.chunkValueEl);
 
-        const speedShell = document.createElement('div');
-        speedShell.className = 'slider-shell slider-shell--reels';
+        this.speedMinusBtn = this.createSpeedButton('minus');
+        this.speedPlusBtn = this.createSpeedButton('plus');
 
-        const speedScale = document.createElement('div');
-        speedScale.className = 'slider-scale slider-scale--reels';
-        speedScale.innerHTML = '<span>Min</span><span>Mid</span><span>Max</span>';
+        const speedStepper = document.createElement('div');
+        speedStepper.className = 'reels-speed-stepper';
+        speedStepper.setAttribute('aria-label', 'Reading speed');
+        speedStepper.append(this.speedMinusBtn, this.chunkValueEl, this.speedPlusBtn);
 
-        this.speedInput = document.createElement('input');
-        this.speedInput.type = 'range';
-        this.speedInput.className = 'reels-speed-slider';
-        this.speedInput.min = '150';
-        this.speedInput.max = '700';
-        this.speedInput.step = '25';
-        this.speedInput.value = String(this.wpm);
-        this.speedInput.addEventListener('input', (event) => {
+        this.speedMinusBtn.addEventListener('click', (event) => {
             event.stopPropagation();
-            const next = Number(this.speedInput.value);
-            this.setWpm(next);
-            this.onWpmChange?.(next);
+            this.changeWpmBy(-25);
         });
 
-        const speedRow = document.createElement('div');
-        speedRow.className = 'slider-row slider-row--reels';
-        speedRow.append(this.speedInput);
+        this.speedPlusBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.changeWpmBy(25);
+        });
 
         this.compactPlayBtn = document.createElement('button');
         this.compactPlayBtn.type = 'button';
@@ -183,8 +169,7 @@ export class ReelsPlayer {
         this.backgroundCycleLabel.className = 'reels-background-cycle-label';
         this.backgroundCycleControl.append(this.backgroundCycleBtn, this.backgroundCycleLabel);
 
-        speedShell.append(speedScale, speedRow);
-        this.chunkControls.append(topRow, speedShell);
+        this.chunkControls.append(speedStepper);
 
         this.setWpm(this.wpm);
 
@@ -573,12 +558,28 @@ export class ReelsPlayer {
         return `....${trimmed.slice(-10)}`;
     }
 
+    private createSpeedButton(direction: 'minus' | 'plus'): HTMLButtonElement {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `reels-speed-stepper-btn reels-speed-stepper-btn--${direction}`;
+        btn.setAttribute('aria-label', direction === 'minus' ? 'Decrease reading speed' : 'Increase reading speed');
+        btn.textContent = direction === 'minus' ? '-' : '+';
+        return btn;
+    }
+
+    private changeWpmBy(delta: number): void {
+        const next = Math.max(150, Math.min(700, this.wpm + delta));
+        if (next === this.wpm) return;
+
+        this.setWpm(next);
+        this.onWpmChange?.(next);
+    }
+
     setWpm(wpm: number): void {
         this.wpm = Math.max(150, Math.min(700, wpm));
         this.chunkValueEl.textContent = `${this.wpm} WPM`;
-        this.speedInput.value = String(this.wpm);
-        const progress = ((this.wpm - 150) / (700 - 150)) * 100;
-        this.speedInput.style.setProperty('--slider-progress', `${progress}%`);
+        this.speedMinusBtn.disabled = this.wpm <= 150;
+        this.speedPlusBtn.disabled = this.wpm >= 700;
     }
 
     setDeleteEnabled(enabled: boolean): void {
