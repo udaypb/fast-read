@@ -403,7 +403,7 @@ export class ReelsPlayer {
     }
 
     public showPlayPauseIndicator(playing: boolean): void {
-        this.playPauseIndicator.innerHTML = playing ? '<span>▶</span>' : '<span>⏸</span>';
+        this.playPauseIndicator.replaceChildren(this.createPlayIcon(!playing));
 
         // Use class trigger for animation
         this.playPauseIndicator.classList.remove('animate');

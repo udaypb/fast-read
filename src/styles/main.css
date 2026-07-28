@@ -1670,7 +1670,7 @@ body.mode-standard .controls-stack {
 .reel-screen-background {
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -1684,6 +1684,8 @@ body.mode-standard .controls-stack {
 
 .reel-screen-background .bg-layer {
   position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
 }
 
 /* Background within the phone should fill it */
@@ -2078,9 +2080,10 @@ body.mode-standard .controls-stack {
 
 .reels-background-cycle {
   position: absolute;
-  right: max(20px, calc(env(safe-area-inset-right, 0px) + 20px));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
-  z-index: 131;
+  top: max(78px, calc(env(safe-area-inset-top, 0px) + 58px));
+  right: max(18px, calc(env(safe-area-inset-right, 0px) + 18px));
+  bottom: auto;
+  z-index: 10002;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2380,11 +2383,16 @@ body.mode-standard .controls-stack {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 40px;
+  color: #1a1a1a;
+  font-size: 0;
   opacity: 0;
   pointer-events: none;
   z-index: 100;
+}
+
+.reels-center-indicator .reels-control-icon {
+  color: #1a1a1a;
+  transform: scale(1.35);
 }
 
 .reels-center-indicator.animate {
@@ -3394,8 +3402,9 @@ body.mode-portrait .settings-reel-section {
   }
 
   .reels-background-cycle {
-    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 118px);
+    top: max(72px, calc(env(safe-area-inset-top, 0px) + 54px));
+    right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
+    bottom: auto;
     width: 58px;
   }
 
@@ -3406,6 +3415,19 @@ body.mode-portrait .settings-reel-section {
 
   .reels-background-cycle-label {
     font-size: 0.56rem;
+  }
+
+  .reels-compact-play-btn {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
+    border-radius: 50%;
+    font-size: 0;
+  }
+
+  .reels-compact-play-btn .reels-control-icon {
+    flex: 0 0 auto;
   }
 }
 

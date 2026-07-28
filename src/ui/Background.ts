@@ -78,6 +78,7 @@ export class Background {
         video.loop = true;
         video.muted = true;
         video.playsInline = true;
+        video.defaultMuted = true;
         video.style.position = 'absolute';
         video.style.top = '0';
         video.style.left = '0';
@@ -85,10 +86,26 @@ export class Background {
         video.style.height = '100%';
         video.style.objectFit = 'cover';
         video.style.zIndex = '0';
+        video.addEventListener('error', () => {
+          console.warn(`Failed to load video background: ${definition.id}`);
+          this.disabled.add(definition.id);
+          if (this.currentId === definition.id) {
+            void this.setStyle('net');
+          }
+        }, { once: true });
         this.root.appendChild(video);
+        video.load();
+        void video.play().catch((error) => {
+          console.warn(`Failed to play video background: ${definition.id}`, error);
+          this.disabled.add(definition.id);
+          if (this.currentId === definition.id) {
+            void this.setStyle('net');
+          }
+        });
 
         this.effect = {
           destroy: () => {
+            video.pause();
             video.remove();
           }
         };
