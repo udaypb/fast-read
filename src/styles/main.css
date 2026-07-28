@@ -2620,16 +2620,16 @@ body.mode-standard .controls-stack .settings-button {
   transform: translateY(4px);
 }
 
-/* Push bottom buttons up when settings panel opens in Reel Mode */
+/* Full-screen sheet mode: hide reel controls behind the open menu. */
 .reels-player-content.settings-open .settings-button,
-.reels-player-content.settings-open .reels-delete-btn {
-  transform: translateY(calc(-1 * var(--panel-height, 400px) - 20px));
-}
-
+.reels-player-content.settings-open .reels-delete-btn,
 .reels-player-content.settings-open .reels-compact-play-btn,
 .reels-player-content.settings-open .reels-background-cycle,
 .reels-player-content.settings-open .reels-chunk-controls,
-.reels-player-content.settings-open .reader-upload-switcher-shell {
+.reels-player-content.settings-open .reader-upload-switcher-shell,
+.reels-player-content.settings-open .reels-progress-container,
+.reels-player-content.settings-open .reels-frame-counter,
+.reels-player-content.settings-open .reels-pager {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s ease;
@@ -2723,21 +2723,33 @@ body.mode-standard .controls-cog {
 }
 
 .reels-player-content .settings-panel {
+  position: fixed;
+  inset: 0;
   bottom: 0;
   right: 0;
   left: 0;
-  top: auto;
+  top: 0;
   width: 100%;
   max-width: 100%;
-  border-radius: 24px 24px 0 0;
-  border-bottom: none;
-  border-left: none;
-  border-right: none;
+  height: 100vh;
+  max-height: 100vh;
+  border-radius: 0;
+  border: none;
+  background: rgba(6, 6, 6, 0.98);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
   transform: translateY(100%);
   margin: 0;
-  height: min(720px, calc(100dvh - env(safe-area-inset-top, 0px) - 18px));
-  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 2147482000;
+}
+
+@supports (height: 100dvh) {
+  .reels-player-content .settings-panel {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
 }
 
 .settings-panel.open {
@@ -2749,11 +2761,11 @@ body.mode-standard .controls-cog {
 .settings-drag-handle {
   display: none;
   /* Only show in portrait */
-  width: 40px;
+  width: 44px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.24);
   border-radius: 2px;
-  margin: 12px auto 0;
+  margin: max(12px, env(safe-area-inset-top, 0px)) auto 10px;
   cursor: grab;
   touch-action: none;
 }
@@ -2778,6 +2790,11 @@ body.mode-standard .controls-cog {
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.reels-player-content .settings-panel-content {
+  flex: 1 1 auto;
+  height: auto;
 }
 
 .settings-panel-content::-webkit-scrollbar {
@@ -3428,6 +3445,22 @@ body.mode-portrait .settings-reel-section {
     right: 0;
     left: 0;
     margin: 0 auto;
+  }
+
+  .reels-player-content .settings-panel {
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    inset: 0;
+    margin: 0;
+  }
+
+  @supports (height: 100dvh) {
+    .reels-player-content .settings-panel {
+      height: 100dvh;
+      max-height: 100dvh;
+    }
   }
 
   .settings-panel-content {
