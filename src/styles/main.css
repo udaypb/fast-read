@@ -21,6 +21,15 @@
   --reading-focus-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
   --reading-bar-color: rgba(32, 32, 32, 0.72);
   --reading-bar-glow: rgba(0, 0, 0, 0.18);
+  --reel-ui-foreground: rgba(255, 255, 255, 0.94);
+  --reel-ui-muted: rgba(255, 255, 255, 0.68);
+  --reel-ui-surface: rgba(8, 8, 8, 0.48);
+  --reel-ui-border: rgba(255, 255, 255, 0.14);
+  --reel-ui-accent: rgba(249, 226, 176, 0.94);
+  --reel-ui-accent-strong: #f9e2b0;
+  --reel-ui-on-accent: #181818;
+  --reel-ui-track: rgba(255, 255, 255, 0.14);
+  --reel-ui-shadow: rgba(0, 0, 0, 0.34);
 }
 
 /* Main Styles */
@@ -296,6 +305,15 @@ body[data-text-tone='dark'] {
   --reading-focus-shadow: 0 10px 30px rgba(255, 244, 214, 0.1);
   --reading-bar-color: rgba(28, 28, 28, 0.66);
   --reading-bar-glow: rgba(255, 244, 214, 0.08);
+  --reel-ui-foreground: rgba(18, 18, 18, 0.92);
+  --reel-ui-muted: rgba(18, 18, 18, 0.68);
+  --reel-ui-surface: rgba(255, 255, 255, 0.58);
+  --reel-ui-border: rgba(18, 18, 18, 0.18);
+  --reel-ui-accent: rgba(20, 20, 20, 0.88);
+  --reel-ui-accent-strong: #161616;
+  --reel-ui-on-accent: #ffffff;
+  --reel-ui-track: rgba(18, 18, 18, 0.16);
+  --reel-ui-shadow: rgba(255, 255, 255, 0.28);
 }
 
 body[data-text-tone='light'] {
@@ -307,6 +325,15 @@ body[data-text-tone='light'] {
   --reading-focus-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
   --reading-bar-color: rgba(32, 32, 32, 0.72);
   --reading-bar-glow: rgba(0, 0, 0, 0.18);
+  --reel-ui-foreground: rgba(255, 255, 255, 0.94);
+  --reel-ui-muted: rgba(255, 255, 255, 0.68);
+  --reel-ui-surface: rgba(8, 8, 8, 0.48);
+  --reel-ui-border: rgba(255, 255, 255, 0.14);
+  --reel-ui-accent: rgba(249, 226, 176, 0.94);
+  --reel-ui-accent-strong: #f9e2b0;
+  --reel-ui-on-accent: #181818;
+  --reel-ui-track: rgba(255, 255, 255, 0.14);
+  --reel-ui-shadow: rgba(0, 0, 0, 0.34);
 }
 
 #app,
@@ -1994,9 +2021,9 @@ body.settings-sheet-open .import-root {
   min-height: 42px;
   padding: 5px 7px;
   border-radius: 999px;
-  background: rgba(8, 8, 8, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  background: var(--reel-ui-surface);
+  border: 1px solid var(--reel-ui-border);
+  box-shadow: 0 8px 24px var(--reel-ui-shadow);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
@@ -2008,10 +2035,10 @@ body.settings-sheet-open .import-root {
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--reel-ui-border);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, var(--reel-ui-foreground) 8%, transparent);
+  color: var(--reel-ui-foreground);
   font-family: var(--font-ui);
   font-size: 1.08rem;
   font-weight: 700;
@@ -2024,9 +2051,9 @@ body.settings-sheet-open .import-root {
 
 .reels-speed-stepper-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: rgba(249, 226, 176, 0.18);
-  border-color: rgba(249, 226, 176, 0.32);
-  color: #fff;
+  background: color-mix(in srgb, var(--reel-ui-accent-strong) 18%, transparent);
+  border-color: color-mix(in srgb, var(--reel-ui-accent-strong) 32%, transparent);
+  color: var(--reel-ui-foreground);
 }
 
 .reels-speed-stepper-btn:active:not(:disabled) {
@@ -2041,7 +2068,7 @@ body.settings-sheet-open .import-root {
 .reels-chunk-value {
   min-width: 74px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--reel-ui-foreground);
   font-family: var(--font-ui);
   font-size: 0.72rem;
   font-weight: 800;
@@ -2064,8 +2091,8 @@ body.settings-sheet-open .import-root {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: var(--accent);
-  color: #1a1a1a;
+  background: var(--reel-ui-accent-strong);
+  color: var(--reel-ui-on-accent);
   font-size: 0;
   line-height: 1;
   cursor: pointer;
@@ -2077,8 +2104,8 @@ body.settings-sheet-open .import-root {
   text-indent: 0;
   overflow: hidden;
   font-family: var(--font-ui);
-  box-shadow: 0 6px 20px rgba(249, 226, 176, 0.35);
-  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--reel-ui-accent-strong) 35%, transparent);
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .reels-control-icon {
@@ -2149,12 +2176,12 @@ body.settings-sheet-open .import-root {
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--reel-ui-border);
   border-radius: 50%;
-  background: rgba(12, 12, 12, 0.74);
-  color: rgba(249, 226, 176, 0.96);
+  background: var(--reel-ui-surface);
+  color: var(--reel-ui-foreground);
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32), 0 0 0 5px rgba(249, 226, 176, 0.08);
+  box-shadow: 0 8px 24px var(--reel-ui-shadow), 0 0 0 5px color-mix(in srgb, var(--reel-ui-accent-strong) 9%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
@@ -2163,14 +2190,15 @@ body.settings-sheet-open .import-root {
 .reels-background-cycle-btn svg {
   width: 23px;
   height: 23px;
-  fill: currentColor;
+  fill: none;
+  stroke: currentColor;
 }
 
 .reels-background-cycle-btn:hover:not(:disabled) {
   transform: translateY(-1px) scale(1.04);
-  border-color: rgba(249, 226, 176, 0.42);
-  background: rgba(20, 20, 20, 0.84);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38), 0 0 0 7px rgba(249, 226, 176, 0.1);
+  border-color: color-mix(in srgb, var(--reel-ui-accent-strong) 42%, transparent);
+  background: color-mix(in srgb, var(--reel-ui-surface) 86%, var(--reel-ui-foreground) 14%);
+  box-shadow: 0 10px 28px var(--reel-ui-shadow), 0 0 0 7px color-mix(in srgb, var(--reel-ui-accent-strong) 11%, transparent);
 }
 
 .reels-background-cycle-btn:active:not(:disabled) {
@@ -2180,30 +2208,30 @@ body.settings-sheet-open .import-root {
 .reels-background-cycle-label {
   width: 100%;
   min-height: 13px;
-  color: rgba(255, 255, 255, 0.84);
+  color: var(--reel-ui-muted);
   font-family: var(--font-ui);
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   line-height: 1.05;
   text-align: center;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+  text-shadow: 0 2px 8px var(--reel-ui-shadow);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
 }
 
 .reels-compact-play-btn:hover {
-  background: #fdf0d5;
+  background: var(--reel-ui-accent);
   transform: translateX(-50%) scale(1.07);
-  box-shadow: 0 8px 28px rgba(249, 226, 176, 0.5);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--reel-ui-accent-strong) 45%, transparent);
 }
 
 .reels-compact-play-btn--ready {
   animation: playReadyPulse 1.7s ease-in-out infinite;
   box-shadow:
-    0 8px 28px rgba(249, 226, 176, 0.48),
-    0 0 0 8px rgba(249, 226, 176, 0.1);
+    0 8px 28px color-mix(in srgb, var(--reel-ui-accent-strong) 44%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--reel-ui-accent-strong) 12%, transparent);
 }
 
 .reels-compact-play-btn:active {
@@ -2214,13 +2242,13 @@ body.settings-sheet-open .import-root {
   0%,
   100% {
     box-shadow:
-      0 8px 28px rgba(249, 226, 176, 0.42),
-      0 0 0 7px rgba(249, 226, 176, 0.08);
+      0 8px 28px color-mix(in srgb, var(--reel-ui-accent-strong) 40%, transparent),
+      0 0 0 7px color-mix(in srgb, var(--reel-ui-accent-strong) 10%, transparent);
   }
   50% {
     box-shadow:
-      0 10px 34px rgba(249, 226, 176, 0.58),
-      0 0 0 13px rgba(249, 226, 176, 0.02);
+      0 10px 34px color-mix(in srgb, var(--reel-ui-accent-strong) 56%, transparent),
+      0 0 0 13px color-mix(in srgb, var(--reel-ui-accent-strong) 4%, transparent);
   }
 }
 
@@ -2273,8 +2301,8 @@ body.settings-sheet-open .import-root {
   height: 2px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  opacity: 0.5;
+  background: var(--reel-ui-track);
+  opacity: 0.68;
   pointer-events: none;
 }
 
@@ -2282,8 +2310,8 @@ body.settings-sheet-open .import-root {
   width: 0%;
   height: 100%;
   border-radius: inherit;
-  background: rgba(249, 226, 176, 0.72);
-  box-shadow: 0 0 10px rgba(249, 226, 176, 0.16);
+  background: var(--reel-ui-accent-strong);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--reel-ui-accent-strong) 18%, transparent);
   transition: width 0.16s linear;
 }
 
@@ -2420,13 +2448,13 @@ body.settings-sheet-open .import-root {
   transform: translate(-50%, -50%) scale(0.5);
   width: 100px;
   height: 100px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--reel-ui-accent-strong);
   backdrop-filter: blur(4px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1a1a1a;
+  color: var(--reel-ui-on-accent);
   font-size: 0;
   opacity: 0;
   pointer-events: none;
@@ -2434,7 +2462,7 @@ body.settings-sheet-open .import-root {
 }
 
 .reels-center-indicator .reels-control-icon {
-  color: #1a1a1a;
+  color: var(--reel-ui-on-accent);
   transform: scale(1.35);
 }
 
@@ -3791,13 +3819,13 @@ body.mode-portrait .settings-reel-section {
   width: 100%;
   height: 4px;
   /* Thin line */
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--reel-ui-track);
   z-index: 20;
 }
 
 .reels-progress-bar {
   height: 100%;
-  background: var(--accent);
+  background: var(--reel-ui-accent-strong);
   width: 0%;
   transition: width 0.1s linear;
 }

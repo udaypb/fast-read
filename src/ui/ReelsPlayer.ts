@@ -154,10 +154,16 @@ export class ReelsPlayer {
         this.backgroundCycleBtn.title = 'Change background';
         this.backgroundCycleBtn.setAttribute('aria-label', 'Change reel background');
         this.backgroundCycleBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M18.4 3.5a.75.75 0 0 1 .75.75v1.5h1.5a.75.75 0 0 1 0 1.5h-1.5v1.5a.75.75 0 0 1-1.5 0v-1.5h-1.5a.75.75 0 0 1 0-1.5h1.5v-1.5a.75.75 0 0 1 .75-.75Z"/>
-                <path d="M4.2 5.75a2.25 2.25 0 0 1 2.25-2.25h6.45a.75.75 0 0 1 0 1.5H6.45a.75.75 0 0 0-.75.75v10.5l3.12-3.13a1.75 1.75 0 0 1 2.48 0l1.45 1.45 2.15-2.15a1.75 1.75 0 0 1 2.48 0l.92.92V11a.75.75 0 0 1 1.5 0v7.25a2.25 2.25 0 0 1-2.25 2.25H6.45a2.25 2.25 0 0 1-2.25-2.25V5.75Zm1.55 12.68c.18.35.55.57.97.57h10.55c.34 0 .66-.16.86-.43l-1.8-1.8-2.15 2.15a1.75 1.75 0 0 1-2.48 0l-1.45-1.45-4.5 4.46Z"/>
-                <path d="M8.35 7.9a1.35 1.35 0 1 1 2.7 0 1.35 1.35 0 0 1-2.7 0Z"/>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4.75 7.25A2.5 2.5 0 0 1 7.25 4.75h8.5a2.5 2.5 0 0 1 2.5 2.5v5.1" />
+                <path d="M4.75 15.2V7.25" />
+                <path d="M4.95 14.2l3.2-3.2a1.55 1.55 0 0 1 2.2 0l1.32 1.32 1.78-1.78a1.55 1.55 0 0 1 2.2 0l2.16 2.16" />
+                <path d="M8.45 8.05h.01" />
+                <path d="M6.75 18.25h7.7" />
+                <path d="M17.45 14.25h2.8v-2.8" />
+                <path d="M20.25 14.25a4.65 4.65 0 0 0-7.72-2.32" />
+                <path d="M15.55 20.25h-2.8v2.8" />
+                <path d="M12.75 20.25a4.65 4.65 0 0 0 7.72 2.32" />
             </svg>
         `;
         this.backgroundCycleBtn.addEventListener('click', (event) => {
