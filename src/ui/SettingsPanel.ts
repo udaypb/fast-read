@@ -554,10 +554,12 @@ export class SettingsPanel {
 
             this.root.classList.add('open');
             parent?.classList.add('settings-open');
+            document.body.classList.add('settings-sheet-open');
             this.root.style.transform = ''; // Clear any drag transform
         } else {
             this.root.classList.remove('open');
             parent?.classList.remove('settings-open');
+            document.body.classList.remove('settings-sheet-open');
             this.root.style.transform = ''; // Clear any drag transform
         }
     }

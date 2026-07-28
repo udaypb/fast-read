@@ -979,6 +979,12 @@ body.mode-standard .controls-stack {
   display: none !important;
 }
 
+body.settings-sheet-open .import-root {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -48%);
+}
+
 .import-button {
   border: 1px solid rgba(249, 226, 176, 0.28);
   background: rgba(10, 10, 10, 0.88);
