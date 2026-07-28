@@ -6,6 +6,52 @@ const BACKGROUND_ASSET_BASE_URL =
   (import.meta.env.VITE_BACKGROUND_ASSET_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
   DEFAULT_BACKGROUND_ASSET_BASE_URL;
 
+const BACKGROUND_TEXT_TONES: Record<string, 'light' | 'dark'> = {
+  net: 'light',
+  fog: 'light',
+  waves: 'light',
+  birds: 'light',
+  halo: 'light',
+  globe: 'light',
+  rings: 'light',
+  cells: 'light',
+  dots: 'light',
+  topology: 'light',
+  clouds: 'light',
+  stickman: 'light',
+  blobs: 'light',
+  rain: 'light',
+  neon_tunnel: 'light',
+  particle_bloom: 'light',
+  light_corridor: 'light',
+  wire_tunnel: 'light',
+  mandala: 'dark',
+  galaxy_core: 'light',
+  aurora_lake: 'light',
+  nebula_cloud: 'light',
+  deep_space: 'light',
+  subway_1: 'light',
+  subway_2: 'dark',
+  subway_3: 'light',
+  subway_4: 'dark',
+  china_surfer: 'light',
+  minecraft_1: 'dark',
+  minecraft_3: 'dark',
+  minecraft_4: 'light',
+  minecraft_6: 'dark',
+  minecraft_night: 'light',
+  intro: 'dark',
+  racing_future: 'dark',
+  racing_stadium: 'dark',
+  fortnite_ridge: 'dark',
+  fortnite_corridor: 'dark',
+  fortnite_night: 'light',
+  fortnite_neon_dash: 'light',
+  fortnite_build: 'dark',
+  ocean_coast: 'light',
+  leaf_macro: 'dark'
+};
+
 function backgroundAssetUrl(fileName: string): string {
   const path = fileName
     .replace(/^\//, '')
@@ -421,6 +467,9 @@ export function getBackgroundDefinition(id: string): BackgroundDefinition | unde
 }
 
 export function getBackgroundTextTone(id: string): 'light' | 'dark' {
+  const tone = BACKGROUND_TEXT_TONES[id];
+  if (tone) return tone;
+
   const definition = getBackgroundDefinition(id);
   if (definition?.textTone) return definition.textTone;
 

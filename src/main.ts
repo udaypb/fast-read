@@ -96,12 +96,13 @@ function buildSessionLabel(kind: 'text' | 'file', sequence: number, fileName?: s
 }
 
 function setReadingTextTone(tone?: 'light' | 'dark'): void {
-  if (tone === 'dark' || tone === 'light') {
-    document.body.dataset.textTone = tone;
-    return;
-  }
-
-  document.body.dataset.textTone = 'light';
+  const nextTone = tone === 'dark' || tone === 'light' ? tone : 'light';
+  document.documentElement.dataset.textTone = nextTone;
+  document.body.dataset.textTone = nextTone;
+  document.documentElement.classList.toggle('tone-dark', nextTone === 'dark');
+  document.documentElement.classList.toggle('tone-light', nextTone === 'light');
+  document.body.classList.toggle('tone-dark', nextTone === 'dark');
+  document.body.classList.toggle('tone-light', nextTone === 'light');
 }
 
 function applyBackgroundAndTone(styleId: string, options?: { allowManualTone?: boolean }): void {

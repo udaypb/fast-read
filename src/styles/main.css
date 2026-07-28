@@ -296,7 +296,9 @@ body {
   overscroll-behavior: none;
 }
 
-body[data-text-tone='dark'] {
+html[data-text-tone='dark'],
+body[data-text-tone='dark'],
+.tone-dark {
   --reading-text-color: #111111;
   --reading-text-shadow: 0 4px 20px rgba(255, 255, 255, 0.35);
   --reading-focus-bg: rgba(255, 244, 214, 0.34);
@@ -316,7 +318,9 @@ body[data-text-tone='dark'] {
   --reel-ui-shadow: rgba(255, 255, 255, 0.28);
 }
 
-body[data-text-tone='light'] {
+html[data-text-tone='light'],
+body[data-text-tone='light'],
+.tone-light {
   --reading-text-color: #f5f5f5;
   --reading-text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   --reading-focus-bg: rgba(5, 12, 18, 0.28);
