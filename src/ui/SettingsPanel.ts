@@ -15,6 +15,7 @@ export type SettingsPanelHandlers = {
     onForward?: () => void;
     onWpmChange?: (wpm: number) => void;
     onChunkSizeChange?: (chunkSize: number) => void;
+    onReelLengthChange?: (framesPerReel: number) => void;
     onReelSelect?: (reel: Reel) => void;
     onReelDelete?: (reel: Reel) => void;
     onGroupSelect?: (docId: string) => void;
@@ -30,6 +31,9 @@ export class SettingsPanel {
     private chunkButtons: HTMLButtonElement[] = [];
     private chunkValue?: HTMLElement;
     private chunkSize = 1;
+    private reelLengthButtons: HTMLButtonElement[] = [];
+    private reelLengthValue?: HTMLElement;
+    private reelLengthFrames = 40;
     private isOpen = false;
     private handlers?: SettingsPanelHandlers;
     private activeCategory = 'calming';
@@ -58,10 +62,11 @@ export class SettingsPanel {
         { id: 'real', label: 'Real' }
     ];
 
-    constructor(container: HTMLElement, initialWpm: number, initialChunkSize: number = 1) {
+    constructor(container: HTMLElement, initialWpm: number, initialChunkSize: number = 1, initialReelLengthFrames: number = 40) {
         this.root = document.createElement('div');
         this.root.className = 'settings-panel';
         this.chunkSize = initialChunkSize;
+        this.reelLengthFrames = initialReelLengthFrames;
 
         // Prevent scroll events from bubbling to window (which handles reel navigation)
         // This ensures the settings panel can be scrolled without triggering next/prev reel
@@ -216,7 +221,44 @@ export class SettingsPanel {
         chunkRow.append(chunkHeader, chunkSegment);
         this.setChunkSize(initialChunkSize);
 
-        slidersContainer.append(chunkRow);
+        const reelLengthRow = document.createElement('div');
+        reelLengthRow.className = 'settings-slider-row';
+
+        const reelLengthHeader = document.createElement('div');
+        reelLengthHeader.className = 'settings-slider-header';
+
+        const reelLengthLabel = document.createElement('div');
+        reelLengthLabel.className = 'settings-slider-label';
+        reelLengthLabel.textContent = 'Reel Length';
+
+        this.reelLengthValue = document.createElement('div');
+        this.reelLengthValue.className = 'settings-slider-value';
+        reelLengthHeader.append(reelLengthLabel, this.reelLengthValue);
+
+        const reelLengthSegment = document.createElement('div');
+        reelLengthSegment.className = 'settings-segmented-control settings-segmented-control--wide';
+
+        [
+            { label: 'Short', value: 40 },
+            { label: 'Medium', value: 80 },
+            { label: 'Long', value: 120 }
+        ].forEach((option) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'settings-segmented-btn';
+            btn.textContent = option.label;
+            btn.addEventListener('click', () => {
+                this.setReelLength(option.value);
+                this.handlers?.onReelLengthChange?.(option.value);
+            });
+            this.reelLengthButtons.push(btn);
+            reelLengthSegment.appendChild(btn);
+        });
+
+        reelLengthRow.append(reelLengthHeader, reelLengthSegment);
+        this.setReelLength(initialReelLengthFrames);
+
+        slidersContainer.append(chunkRow, reelLengthRow);
         controlsSection.appendChild(slidersContainer);
 
         this.contentWrapper.appendChild(controlsSection);
@@ -734,6 +776,24 @@ export class SettingsPanel {
         this.chunkButtons.forEach((btn, index) => {
             const value = index + 1;
             btn.classList.toggle('settings-segmented-btn--active', value === this.chunkSize);
+        });
+    }
+
+    public setReelLength(framesPerReel: number): void {
+        const allowed = [40, 80, 120];
+        this.reelLengthFrames = allowed.includes(framesPerReel) ? framesPerReel : 40;
+        if (this.reelLengthValue) {
+            const label = this.reelLengthFrames === 40
+                ? 'Short'
+                : this.reelLengthFrames === 80
+                    ? 'Medium'
+                    : 'Long';
+            this.reelLengthValue.textContent = label;
+        }
+
+        this.reelLengthButtons.forEach((btn, index) => {
+            const value = [40, 80, 120][index];
+            btn.classList.toggle('settings-segmented-btn--active', value === this.reelLengthFrames);
         });
     }
 

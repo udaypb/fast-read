@@ -8,6 +8,7 @@ export type StoredReelSession = {
   label: string;
   reels: Reel[];
   activeReelId: string | null;
+  reelLengthFrames?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -38,6 +39,7 @@ function normalizeSession(session: Partial<StoredReelSession>, index: number): S
     label: typeof session.label === 'string' && session.label.trim() ? session.label : fallbackLabel,
     reels: session.reels,
     activeReelId: typeof session.activeReelId === 'string' ? session.activeReelId : null,
+    reelLengthFrames: typeof session.reelLengthFrames === 'number' ? session.reelLengthFrames : undefined,
     createdAt,
     updatedAt
   };

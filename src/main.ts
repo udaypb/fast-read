@@ -6,7 +6,7 @@ import { Reader } from './reader/Reader';
 import { tokenize } from './reader/Tokenizer';
 import type { Reel, ReelPage } from './api/types';
 import { extractTextFromPdf } from './processing/pdfExtract';
-import { createLocalRenderModel } from './processing/renderModel';
+import { createLocalRenderModel, DEFAULT_FRAMES_PER_REEL } from './processing/renderModel';
 import { TextProcessorClient } from './processing/TextProcessorClient';
 import type { Frame } from './reader/types';
 import {
@@ -62,6 +62,7 @@ const confirmDialog = new ConfirmDialog();
 
 const DEFAULT_WPM = 250;
 const DEFAULT_CHUNK_SIZE = 1;
+const REEL_LENGTH_OPTIONS = [DEFAULT_FRAMES_PER_REEL, 80, 120] as const;
 const REEL_PAGE_LIMIT = 5;
 const MAX_LOCAL_TEXT_WORDS = 50000;
 const textProcessor = new TextProcessorClient();
@@ -116,6 +117,7 @@ function applyBackgroundAndTone(styleId: string, options?: { allowManualTone?: b
 
 let activeText = SAMPLE_TEXT;
 let currentChunkSize = DEFAULT_CHUNK_SIZE;
+let currentFramesPerReel = DEFAULT_FRAMES_PER_REEL;
 let activeSessionCreatedAt = new Date().toISOString();
 const sessionCache = new Map<string, StoredReelSession>();
 
@@ -129,7 +131,12 @@ reelRail.setStatus('Upload a PDF or paste text to load reels.');
 reelRail.setLoading(false);
 
 const reelsPlayer = new ReelsPlayer(app);
-const settingsPanel = new SettingsPanel(reelsPlayer.getContentElement(), DEFAULT_WPM, DEFAULT_CHUNK_SIZE);
+const settingsPanel = new SettingsPanel(
+  reelsPlayer.getContentElement(),
+  DEFAULT_WPM,
+  DEFAULT_CHUNK_SIZE,
+  DEFAULT_FRAMES_PER_REEL
+);
 const settingsButton = new SettingsButton(reelsPlayer.getContentElement());
 reelsPlayer.setWpm(DEFAULT_WPM);
 
@@ -152,6 +159,7 @@ settingsPanel.bind({
   onForward: () => reader.seek(3),
   onWpmChange: (wpm) => reader.setWpm(wpm),
   onChunkSizeChange: (chunkSize) => applyChunkSize(chunkSize),
+  onReelLengthChange: (framesPerReel) => applyReelLength(framesPerReel),
   onReelSelect: (reel) => {
     selectReel(reel, true);
   },
@@ -233,6 +241,12 @@ function applyChunkSize(chunkSize: number): void {
   if (wasPlaying) {
     reader.play();
   }
+}
+
+function normalizeFramesPerReel(framesPerReel: number): number {
+  return REEL_LENGTH_OPTIONS.includes(framesPerReel as typeof REEL_LENGTH_OPTIONS[number])
+    ? framesPerReel
+    : DEFAULT_FRAMES_PER_REEL;
 }
 
 const reader = new Reader({
@@ -340,6 +354,8 @@ function restoreSession(session: StoredReelSession): void {
   const reels = session.reels ?? [];
   sessionCache.set(session.docId, session);
   activeSessionCreatedAt = session.createdAt;
+  currentFramesPerReel = normalizeFramesPerReel(session.reelLengthFrames ?? DEFAULT_FRAMES_PER_REEL);
+  settingsPanel.setReelLength(currentFramesPerReel);
   resetReelState(session.docId);
   syncDeleteAvailability();
   reelState.documentCount = Math.max(reelState.documentCount, sessionCache.size);
@@ -711,7 +727,7 @@ async function ingestDocument(
     reelsPlayer.setLoading(true, 'Building reels...');
     const { frames } = await textProcessor.process(text, currentChunkSize);
     const docId = createLocalDocId();
-    const { reels } = createLocalRenderModel(docId, frames);
+    const { reels } = createLocalRenderModel(docId, frames, { framesPerReel: currentFramesPerReel });
     const firstReelId = reels[0]?.reelId ?? null;
     const nowIso = new Date().toISOString();
 
@@ -720,6 +736,7 @@ async function ingestDocument(
       label: options.sessionLabel,
       reels,
       activeReelId: firstReelId,
+      reelLengthFrames: currentFramesPerReel,
       createdAt: nowIso,
       updatedAt: nowIso
     };
@@ -822,6 +839,108 @@ function syncGroupCompletion(frame: Frame | null): void {
     : 0;
 
   reelsPlayer.setGroupProgress(((completedBeforeActive + completedInActive) / totalWords) * 100);
+}
+
+function getActiveGroupWordOffset(): number {
+  const session = reelState.docId ? sessionCache.get(reelState.docId) : null;
+  if (!session || !reelState.activeReelId) {
+    return 0;
+  }
+
+  const reels = [...session.reels].sort((a, b) => a.index - b.index);
+  const activeReelIndex = reels.findIndex((reel) => reel.reelId === reelState.activeReelId);
+  if (activeReelIndex < 0) {
+    return 0;
+  }
+
+  const completedBeforeActive = reels
+    .slice(0, activeReelIndex)
+    .reduce((sum, reel) => sum + getReelWordCount(reel), 0);
+  const state = reader.getState();
+  const currentFrameStart = Math.max(0, state.currentIndex * currentChunkSize);
+
+  return completedBeforeActive + Math.min(getReelWordCount(reels[activeReelIndex]), currentFrameStart);
+}
+
+function findReelAtWordOffset(reels: Reel[], wordOffset: number): Reel | null {
+  if (reels.length === 0) {
+    return null;
+  }
+
+  let walkedWords = 0;
+  for (const reel of reels) {
+    const nextWalkedWords = walkedWords + getReelWordCount(reel);
+    if (wordOffset < nextWalkedWords) {
+      return reel;
+    }
+    walkedWords = nextWalkedWords;
+  }
+
+  return reels[reels.length - 1] ?? null;
+}
+
+function getReelStartWordOffset(reels: Reel[], reelId: string | null): number {
+  let walkedWords = 0;
+  for (const reel of reels) {
+    if (reel.reelId === reelId) {
+      return walkedWords;
+    }
+    walkedWords += getReelWordCount(reel);
+  }
+
+  return 0;
+}
+
+function rebuildSessionWithReelLength(session: StoredReelSession, framesPerReel: number, activeReelId: string | null): StoredReelSession {
+  const orderedReels = [...session.reels].sort((a, b) => a.index - b.index);
+  const text = normalizeInputText(orderedReels.map((reel) => reel.text).join(' '));
+  const frames = groupTokens(tokenize(text), currentChunkSize);
+  const { reels } = createLocalRenderModel(session.docId, frames, {
+    framesPerReel,
+    previousReels: orderedReels
+  });
+
+  return {
+    ...session,
+    reels,
+    activeReelId,
+    reelLengthFrames: framesPerReel,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function applyReelLength(framesPerReel: number): void {
+  const nextFramesPerReel = normalizeFramesPerReel(framesPerReel);
+  currentFramesPerReel = nextFramesPerReel;
+  settingsPanel.setReelLength(nextFramesPerReel);
+
+  const session = reelState.docId ? sessionCache.get(reelState.docId) : null;
+  if (!session || session.reels.length === 0) {
+    return;
+  }
+
+  const wasPlaying = reader.getState().isPlaying;
+  const targetWordOffset = getActiveGroupWordOffset();
+  const provisionalSession = rebuildSessionWithReelLength(session, nextFramesPerReel, null);
+  const activeReel = findReelAtWordOffset(provisionalSession.reels, targetWordOffset) ?? provisionalSession.reels[0] ?? null;
+  const updatedSession: StoredReelSession = {
+    ...provisionalSession,
+    activeReelId: activeReel?.reelId ?? null
+  };
+
+  sessionCache.set(updatedSession.docId, updatedSession);
+  saveOrUpdateSession(updatedSession);
+  restoreSession(updatedSession);
+
+  if (activeReel) {
+    const activeReelStartOffset = getReelStartWordOffset(updatedSession.reels, activeReel.reelId);
+    const targetFrameIndex = Math.max(0, Math.floor((targetWordOffset - activeReelStartOffset) / currentChunkSize));
+    reader.seek(targetFrameIndex - reader.getState().currentIndex);
+  }
+
+  if (wasPlaying) {
+    reader.play();
+  }
 }
 
 function createLocalDocId(): string {
@@ -1180,6 +1299,7 @@ function persistCurrentSession(docId: string, reels: Reel[], activeReelId: strin
     label: cachedSession?.label || `Upload ${sessionCache.size}`,
     reels,
     activeReelId,
+    reelLengthFrames: cachedSession?.reelLengthFrames ?? currentFramesPerReel,
     createdAt: activeSessionCreatedAt,
     updatedAt: new Date().toISOString()
   };

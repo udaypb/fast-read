@@ -8,7 +8,7 @@ export type LocalRenderModel = {
   reelFramesById: Map<string, Frame[]>;
 };
 
-const FRAMES_PER_REEL = 40;
+export const DEFAULT_FRAMES_PER_REEL = 40;
 const RANDOM_BACKGROUND_CATEGORIES = new Set(['calming']);
 
 const randomBackgrounds = backgroundCatalog.filter((background) => (
@@ -32,18 +32,40 @@ function pickRandomBackground(previousId?: string) {
   return usableCandidates[Math.floor(Math.random() * usableCandidates.length)];
 }
 
-export function createLocalRenderModel(docId: string, frames: Frame[]): LocalRenderModel {
+function resolveBackground(reelIndex: number, previousReels: Reel[] | undefined, previousId?: string) {
+  const previousReel = previousReels?.[reelIndex];
+  const persistedBackground = previousReel
+    ? backgroundCatalog.find((background) => background.id === previousReel.backgroundId)
+    : null;
+
+  return persistedBackground ?? pickRandomBackground(previousId);
+}
+
+function normalizeFramesPerReel(value: number | undefined): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_FRAMES_PER_REEL;
+  }
+
+  return Math.max(20, Math.min(160, Math.round(value ?? DEFAULT_FRAMES_PER_REEL)));
+}
+
+export function createLocalRenderModel(
+  docId: string,
+  frames: Frame[],
+  options?: { framesPerReel?: number; previousReels?: Reel[] }
+): LocalRenderModel {
   const reels: Reel[] = [];
   const reelFramesById = new Map<string, Frame[]>();
   const createdAt = new Date().toISOString();
+  const framesPerReel = normalizeFramesPerReel(options?.framesPerReel);
   let previousBackgroundId: string | undefined;
 
-  for (let i = 0; i < frames.length; i += FRAMES_PER_REEL) {
-    const reelFrames = frames.slice(i, i + FRAMES_PER_REEL);
+  for (let i = 0; i < frames.length; i += framesPerReel) {
+    const reelFrames = frames.slice(i, i + framesPerReel);
     const reelIndex = reels.length;
     const reelId = `${docId}-reel-${reelIndex + 1}`;
     const text = reelFrames.map((frame) => frame.text).join(' ').replace(/\s+/g, ' ').trim();
-    const background = pickRandomBackground(previousBackgroundId);
+    const background = resolveBackground(reelIndex, options?.previousReels, previousBackgroundId);
     previousBackgroundId = background?.id;
 
     reelFramesById.set(reelId, reelFrames.map((frame, frameIndex) => ({ ...frame, index: frameIndex })));
