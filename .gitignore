@@ -62,8 +62,12 @@ logs/
 ####################################
 tmp/
 .cache/
-
-<<<<<<< HEAD
-=======
 .git_new
->>>>>>> b347926 (Polish UI, improve request)
+
+####################################
+# Background media lives in S3
+####################################
+assets/backgrounds/*.mp4
+assets/backgrounds/*.webm
+assets/backgrounds/*.mov
+assets/backgrounds/*.m4v
