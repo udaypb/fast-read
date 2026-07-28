@@ -8,16 +8,16 @@ const BACKGROUND_ASSET_BASE_URL =
 
 const BACKGROUND_TEXT_TONES: Record<string, 'light' | 'dark'> = {
   net: 'light',
-  fog: 'light',
+  fog: 'dark',
   waves: 'light',
-  birds: 'light',
+  birds: 'dark',
   halo: 'light',
   globe: 'light',
   rings: 'light',
   cells: 'light',
   dots: 'light',
   topology: 'light',
-  clouds: 'light',
+  clouds: 'dark',
   stickman: 'light',
   blobs: 'light',
   rain: 'light',
@@ -100,7 +100,8 @@ const rawBackgroundCatalog: BackgroundDefinition[] = [
     load: wrapEffect(() => import('vanta/dist/vanta.fog.min')),
     category: 'calming',
     type: BackgroundType.Vanta,
-    thumbnail: 'https://placehold.co/120x80/232323/FFF?text=Fog'
+    thumbnail: 'https://placehold.co/120x80/232323/FFF?text=Fog',
+    textTone: 'dark'
   },
   {
     id: 'waves',
@@ -116,7 +117,8 @@ const rawBackgroundCatalog: BackgroundDefinition[] = [
     load: wrapEffect(() => import('vanta/dist/vanta.birds.min')),
     category: 'calming',
     type: BackgroundType.Vanta,
-    thumbnail: 'https://placehold.co/120x80/232323/FFF?text=Birds'
+    thumbnail: 'https://placehold.co/120x80/232323/FFF?text=Birds',
+    textTone: 'dark'
   },
   {
     id: 'halo',
@@ -175,7 +177,8 @@ const rawBackgroundCatalog: BackgroundDefinition[] = [
     load: wrapEffect(() => import('vanta/dist/vanta.clouds.min')),
     category: 'calming',
     type: BackgroundType.Vanta,
-    thumbnail: 'https://placehold.co/120x80/232323/FFF?text=Clouds'
+    thumbnail: 'https://placehold.co/120x80/232323/FFF?text=Clouds',
+    textTone: 'dark'
   },
   {
     id: 'stickman',
