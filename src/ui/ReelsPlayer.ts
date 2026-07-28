@@ -63,7 +63,7 @@ export class ReelsPlayer {
 
         this.playPauseBtn = document.createElement('button');
         this.playPauseBtn.className = 'reels-play-pause-btn';
-        this.playPauseBtn.innerHTML = '<span>⏸</span>';
+        this.playPauseBtn.append(this.createPlayIcon(false));
         this.playPauseBtn.style.display = 'none'; // Hidden in favor of Settings Panel controls
 
         // Loader
@@ -142,7 +142,7 @@ export class ReelsPlayer {
         this.compactPlayBtn = document.createElement('button');
         this.compactPlayBtn.type = 'button';
         this.compactPlayBtn.className = 'reels-compact-play-btn';
-        this.compactPlayBtn.innerHTML = '<span>⏸</span>';
+        this.compactPlayBtn.append(this.createPlayIcon(false));
         this.compactPlayBtn.addEventListener('click', (event) => {
             event.stopPropagation();
             this.onPlayPause?.();
@@ -389,10 +389,17 @@ export class ReelsPlayer {
     }
 
     setPlaying(playing: boolean): void {
-        this.playPauseBtn.innerHTML = playing ? '<span>⏸</span>' : '<span>▶</span>';
-        this.compactPlayBtn.innerHTML = playing ? '<span>⏸</span>' : '<span>▶</span>';
+        this.playPauseBtn.replaceChildren(this.createPlayIcon(playing));
+        this.compactPlayBtn.replaceChildren(this.createPlayIcon(playing));
         const hasPlayableReel = !this.isEmptyState && Boolean(this.activeReelId) && this.activeReelId !== 'empty';
         this.compactPlayBtn.classList.toggle('reels-compact-play-btn--ready', hasPlayableReel && !playing);
+    }
+
+    private createPlayIcon(playing: boolean): HTMLSpanElement {
+        const icon = document.createElement('span');
+        icon.className = playing ? 'reels-control-icon reels-control-icon--pause' : 'reels-control-icon reels-control-icon--play';
+        icon.setAttribute('aria-hidden', 'true');
+        return icon;
     }
 
     public showPlayPauseIndicator(playing: boolean): void {

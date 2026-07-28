@@ -2041,10 +2041,45 @@ body.mode-standard .controls-stack {
   transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.reels-control-icon {
+  display: block;
+  width: 18px;
+  height: 20px;
+  position: relative;
+}
+
+.reels-control-icon--play {
+  width: 0;
+  height: 0;
+  margin-left: 4px;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-left: 15px solid currentColor;
+}
+
+.reels-control-icon--pause::before,
+.reels-control-icon--pause::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 5px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.reels-control-icon--pause::before {
+  left: 3px;
+}
+
+.reels-control-icon--pause::after {
+  right: 3px;
+}
+
 .reels-background-cycle {
   position: absolute;
-  right: max(18px, calc(env(safe-area-inset-right, 0px) + 18px));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
+  right: max(20px, calc(env(safe-area-inset-right, 0px) + 20px));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
   z-index: 131;
   display: flex;
   flex-direction: column;
@@ -2547,6 +2582,7 @@ body.mode-standard .controls-stack .settings-button {
 }
 
 .reels-player-content.settings-open .reels-compact-play-btn,
+.reels-player-content.settings-open .reels-background-cycle,
 .reels-player-content.settings-open .reels-chunk-controls,
 .reels-player-content.settings-open .reader-upload-switcher-shell {
   opacity: 0;
@@ -2556,6 +2592,7 @@ body.mode-standard .controls-stack .settings-button {
 
 /* Empty state: hide all playback controls so they don't clutter the landing view */
 .reels-player-content.reels-empty-state .reels-compact-play-btn,
+.reels-player-content.reels-empty-state .reels-background-cycle,
 .reels-player-content.reels-empty-state .reels-chunk-controls,
 .reels-player-content.reels-empty-state .reels-delete-btn,
 .reels-player-content.reels-empty-state .settings-button,
@@ -2653,8 +2690,9 @@ body.mode-standard .controls-cog {
   border-right: none;
   transform: translateY(100%);
   margin: 0;
-  max-height: 85vh;
-  /* Keep some space at top */
+  height: min(720px, calc(100dvh - env(safe-area-inset-top, 0px) - 18px));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .settings-panel.open {
@@ -2688,7 +2726,9 @@ body.mode-standard .controls-cog {
 .settings-panel-content {
   padding: 24px;
   height: 100%;
-  overflow-x: auto;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -3312,12 +3352,60 @@ body.mode-portrait .settings-reel-section {
 
   /* Settings panel mobile adjustments */
   .settings-panel {
-    width: calc(100vw - 40px);
-    max-width: 400px;
-    height: 400px;
-    right: 20px;
-    left: 20px;
+    width: 100%;
+    max-width: 100%;
+    height: min(760px, calc(100dvh - env(safe-area-inset-top, 0px) - 12px));
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px);
+    right: 0;
+    left: 0;
     margin: 0 auto;
+  }
+
+  .settings-panel-content {
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+  }
+
+  .settings-section {
+    margin-bottom: 18px;
+  }
+
+  .settings-reel-previews {
+    max-height: 168px;
+  }
+
+  .settings-style-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: rgba(12, 12, 12, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .settings-style-previews {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .settings-preview-name-only {
+    padding: 8px;
+    font-size: 0.68rem;
+  }
+
+  .reels-background-cycle {
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 118px);
+    width: 58px;
+  }
+
+  .reels-background-cycle-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .reels-background-cycle-label {
+    font-size: 0.56rem;
   }
 }
 
@@ -3547,6 +3635,42 @@ body.mode-portrait .settings-reel-section {
 
 .settings-play-btn span {
   font-size: 1.2rem;
+}
+
+.settings-play-icon {
+  display: inline-block;
+  width: 14px;
+  height: 16px;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.settings-play-icon--play {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 12px solid currentColor;
+}
+
+.settings-play-icon--pause::before,
+.settings-play-icon--pause::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 4px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.settings-play-icon--pause::before {
+  left: 2px;
+}
+
+.settings-play-icon--pause::after {
+  right: 2px;
 }
 
 /* Reels Progress Bar */

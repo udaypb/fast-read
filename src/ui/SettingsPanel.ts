@@ -165,7 +165,7 @@ export class SettingsPanel {
 
         this.playPauseBtn = document.createElement('button');
         this.playPauseBtn.className = 'settings-control-btn settings-play-btn';
-        this.playPauseBtn.innerHTML = '<span>⏸</span> Pause';
+        this.playPauseBtn.append(this.createPlayIcon(true), document.createTextNode(' Pause'));
         this.playPauseBtn.addEventListener('click', () => {
             this.handlers?.onPlayPause?.();
         });
@@ -247,15 +247,23 @@ export class SettingsPanel {
     }
 
     public setPlaying(isPlaying: boolean): void {
-        this.playPauseBtn.innerHTML = isPlaying
-            ? '<span>⏸</span> Pause'
-            : '<span>▶</span> Play';
+        this.playPauseBtn.replaceChildren(
+            this.createPlayIcon(isPlaying),
+            document.createTextNode(isPlaying ? ' Pause' : ' Play')
+        );
 
         if (isPlaying) {
             this.playPauseBtn.classList.remove('settings-play-btn--paused');
         } else {
             this.playPauseBtn.classList.add('settings-play-btn--paused');
         }
+    }
+
+    private createPlayIcon(isPlaying: boolean): HTMLSpanElement {
+        const icon = document.createElement('span');
+        icon.className = isPlaying ? 'settings-play-icon settings-play-icon--pause' : 'settings-play-icon settings-play-icon--play';
+        icon.setAttribute('aria-hidden', 'true');
+        return icon;
     }
 
     private renderTabs(container: HTMLElement): void {
