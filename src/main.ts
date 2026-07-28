@@ -217,6 +217,7 @@ function applyChunkSize(chunkSize: number): void {
       reader.setFrames(reelFrames, { preservePosition: false });
       reelsPlayer.setFrame(reelFrames[0] ?? null);
       reelsPlayer.setProgress(0, reelFrames.length);
+      syncGroupCompletion(reelFrames[0] ?? null);
       if (wasPlaying) {
         reader.play();
       }
@@ -228,6 +229,7 @@ function applyChunkSize(chunkSize: number): void {
   reader.setFrames(nextFrames, { preservePosition: false });
   reelsPlayer.setFrame(nextFrames[0] ?? null);
   reelsPlayer.setProgress(0, nextFrames.length);
+  syncGroupCompletion(null);
   if (wasPlaying) {
     reader.play();
   }
@@ -238,6 +240,7 @@ const reader = new Reader({
   wpm: DEFAULT_WPM,
   onFrame: (frame) => {
     reelsPlayer.setFrame(frame);
+    syncGroupCompletion(frame);
   },
   onStateChange: (state) => {
     reelsPlayer.setPlaying(state.isPlaying);
@@ -786,6 +789,41 @@ function countWords(text: string): number {
   return (text.trim().match(/\S+/g) ?? []).length;
 }
 
+function getReelWordCount(reel: Reel): number {
+  return reel.wordCount || countWords(reel.text);
+}
+
+function syncGroupCompletion(frame: Frame | null): void {
+  const session = reelState.docId ? sessionCache.get(reelState.docId) : null;
+  if (!session || !reelState.activeReelId || session.reels.length === 0) {
+    reelsPlayer.setGroupProgress(0);
+    return;
+  }
+
+  const reels = [...session.reels].sort((a, b) => a.index - b.index);
+  const activeReelIndex = reels.findIndex((reel) => reel.reelId === reelState.activeReelId);
+  if (activeReelIndex < 0) {
+    reelsPlayer.setGroupProgress(0);
+    return;
+  }
+
+  const totalWords = reels.reduce((sum, reel) => sum + getReelWordCount(reel), 0);
+  if (totalWords <= 0) {
+    reelsPlayer.setGroupProgress(0);
+    return;
+  }
+
+  const completedBeforeActive = reels
+    .slice(0, activeReelIndex)
+    .reduce((sum, reel) => sum + getReelWordCount(reel), 0);
+  const activeReelWordCount = getReelWordCount(reels[activeReelIndex]);
+  const completedInActive = frame
+    ? Math.min(activeReelWordCount, Math.max(0, frame.endTokenIndex + 1))
+    : 0;
+
+  reelsPlayer.setGroupProgress(((completedBeforeActive + completedInActive) / totalWords) * 100);
+}
+
 function createLocalDocId(): string {
   if (typeof crypto.randomUUID === 'function') {
     return `local-${crypto.randomUUID()}`;
@@ -1031,10 +1069,12 @@ function selectReel(reel: Reel, autoplay: boolean, scroll: boolean = true): void
   if (autoplay) {
     reader.seek(-reader.getState().currentIndex);
     reelsPlayer.setProgress(0, reelFrames.length);
+    syncGroupCompletion(reelFrames[0] ?? null);
     reader.play();
   } else {
     reader.seek(-reader.getState().currentIndex);
     reelsPlayer.setProgress(0, reelFrames.length);
+    syncGroupCompletion(reelFrames[0] ?? null);
   }
 }
 

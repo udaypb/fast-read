@@ -256,11 +256,14 @@ export class ReelsPlayer {
         const clampedTotal = Math.max(0, total);
         const safeCurrent = clampedTotal > 0 ? Math.min(Math.max(current, 0), clampedTotal - 1) : 0;
         const barPercentage = clampedTotal > 1 ? (safeCurrent / (clampedTotal - 1)) * 100 : 0;
-        const completedPercentage = clampedTotal > 0 ? ((safeCurrent + 1) / clampedTotal) * 100 : 0;
-        const roundedCompletedPercentage = Math.round(completedPercentage);
         this.progressBar.style.width = `${barPercentage}%`;
         this.frameCounter.textContent = clampedTotal > 0 ? `${safeCurrent + 1} / ${clampedTotal}` : '0 / 0';
-        this.percentProgressEl.style.setProperty('--reels-percent-progress', `${completedPercentage * 3.6}deg`);
+    }
+
+    setGroupProgress(percentage: number): void {
+        const safePercentage = Math.max(0, Math.min(100, percentage));
+        const roundedCompletedPercentage = Math.round(safePercentage);
+        this.percentProgressEl.style.setProperty('--reels-percent-progress', `${safePercentage * 3.6}deg`);
         this.percentProgressEl.setAttribute('aria-valuenow', String(roundedCompletedPercentage));
         this.percentProgressEl.title = `${roundedCompletedPercentage}% complete`;
         this.percentProgressValue.textContent = `${roundedCompletedPercentage}%`;
