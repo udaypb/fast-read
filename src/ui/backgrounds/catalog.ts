@@ -80,7 +80,7 @@ async function ensureP5(): Promise<void> {
   win.p5 = module.default ?? module;
 }
 
-export const backgroundCatalog: BackgroundDefinition[] = [
+const rawBackgroundCatalog: BackgroundDefinition[] = [
   {
     id: 'net',
     label: 'Net',
@@ -462,17 +462,21 @@ export const backgroundCatalog: BackgroundDefinition[] = [
   }
 ];
 
+export const backgroundCatalog: BackgroundDefinition[] = rawBackgroundCatalog.map((definition) => ({
+  ...definition,
+  textTone: definition.textTone ?? BACKGROUND_TEXT_TONES[definition.id] ?? inferBackgroundTextTone(definition)
+}));
+
 export function getBackgroundDefinition(id: string): BackgroundDefinition | undefined {
   return backgroundCatalog.find((item) => item.id === id);
 }
 
 export function getBackgroundTextTone(id: string): 'light' | 'dark' {
-  const tone = BACKGROUND_TEXT_TONES[id];
-  if (tone) return tone;
-
   const definition = getBackgroundDefinition(id);
-  if (definition?.textTone) return definition.textTone;
+  return definition?.textTone ?? 'light';
+}
 
+function inferBackgroundTextTone(definition: BackgroundDefinition): 'light' | 'dark' {
   const thumbnailHex = definition?.thumbnail?.match(/placehold\.co\/\d+x\d+\/([0-9a-fA-F]{3,6})\//)?.[1];
   if (!thumbnailHex) return 'light';
 

@@ -106,8 +106,10 @@ function setReadingTextTone(tone?: 'light' | 'dark'): void {
 }
 
 function applyBackgroundAndTone(styleId: string, options?: { allowManualTone?: boolean }): void {
+  const tone = getBackgroundTextTone(styleId);
   if (options?.allowManualTone !== false) {
-    setReadingTextTone(getBackgroundTextTone(styleId));
+    setReadingTextTone(tone);
+    reelsPlayer.setTextTone(tone);
   }
   void background.setStyle(styleId);
 }

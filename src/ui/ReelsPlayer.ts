@@ -379,6 +379,15 @@ export class ReelsPlayer {
         return this.contentEl;
     }
 
+    setTextTone(tone: 'light' | 'dark'): void {
+        this.root.dataset.textTone = tone;
+        this.contentEl.dataset.textTone = tone;
+        this.root.classList.toggle('tone-dark', tone === 'dark');
+        this.root.classList.toggle('tone-light', tone === 'light');
+        this.contentEl.classList.toggle('tone-dark', tone === 'dark');
+        this.contentEl.classList.toggle('tone-light', tone === 'light');
+    }
+
     setPlaying(playing: boolean): void {
         this.playPauseBtn.replaceChildren(this.createPlayIcon(playing));
         this.compactPlayBtn.replaceChildren(this.createPlayIcon(playing));
