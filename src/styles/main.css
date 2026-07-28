@@ -2011,7 +2011,7 @@ body.settings-sheet-open .import-root {
 .reels-chunk-controls {
   position: absolute;
   left: 50%;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 112px);
   top: auto;
   transform: translateX(-50%);
   display: flex;
@@ -2025,9 +2025,9 @@ body.settings-sheet-open .import-root {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 5px 7px;
+  gap: 12px;
+  min-height: 46px;
+  padding: 7px 10px;
   border-radius: 999px;
   background: var(--reel-ui-surface);
   border: 1px solid var(--reel-ui-border);
@@ -2110,11 +2110,11 @@ body.settings-sheet-open .import-root {
 }
 
 .reels-compact-seek-btn--rewind {
-  left: calc(50% - 96px);
+  left: calc(50% - 108px);
 }
 
 .reels-compact-seek-btn--forward {
-  right: calc(50% - 96px);
+  right: calc(50% - 108px);
 }
 
 .reels-compact-seek-btn svg {
