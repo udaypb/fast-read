@@ -31,7 +31,7 @@ import { BackgroundType } from './ui/backgrounds/types';
 inject();
 
 const SAMPLE_TEXT =
-  'Read Fast is a minimalist speed reading demo. It keeps the words steady, inside two calm guide bars, so your eyes stay centered. Use the controls to play, pause, or adjust the speed. Tap space to start, then arrow keys to jump or change pace.';
+  'ReadFast.live is a minimalist speed reading demo. It keeps the words steady, inside two calm guide bars, so your eyes stay centered. Use the controls to play, pause, or adjust the speed. Tap space to start, then arrow keys to jump or change pace.';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) {
@@ -428,7 +428,7 @@ async function runIntroSequence(sessions: StoredReelSession[]) {
     'to discover',
     'your true',
     'reading speed',
-    'with Read Fast'
+    'with ReadFast'
   ];
 
   for (const phrase of introPhrases) {
@@ -439,7 +439,7 @@ async function runIntroSequence(sessions: StoredReelSession[]) {
     await new Promise(r => setTimeout(r, 200));
   }
 
-  introTextEl.textContent = 'Read Fast';
+  introTextEl.textContent = 'ReadFast';
   introTextEl.classList.add('intro-text--visible');
   await new Promise(r => setTimeout(r, 1000));
 
