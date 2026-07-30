@@ -1,0 +1,12 @@
+{
+  "name": "ReadFast.live",
+  "short_name": "ReadFast",
+  "description": "A free speed reader for focused reading with PDF import, adjustable pacing, and distraction-free controls.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "categories": ["education", "productivity", "utilities"],
+  "lang": "en-US"
+}

@@ -3,49 +3,100 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>ReadFast.live - Speed Reader for Focused Reading</title>
+    <title>ReadFast.live - Free Speed Reader for Focused Reading</title>
     <meta
       name="description"
-      content="ReadFast.live is a focused speed reader for pasting text, importing documents, and reading with adjustable pacing, highlighting, and distraction-free controls."
+      content="ReadFast.live is a free speed reader for focused reading. Paste text, import PDFs, adjust reading speed, and read faster with distraction-free controls."
     />
     <meta name="robots" content="index,follow" />
+    <meta name="application-name" content="ReadFast.live" />
+    <meta name="apple-mobile-web-app-title" content="ReadFast" />
+    <meta name="author" content="ReadFast.live" />
+    <meta name="theme-color" content="#0f172a" />
     <link rel="canonical" href="https://www.readfast.live/" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.readfast.live/" />
     <meta property="og:site_name" content="ReadFast.live" />
-    <meta property="og:title" content="ReadFast.live - Speed Reader for Focused Reading" />
+    <meta property="og:title" content="ReadFast.live - Free Speed Reader for Focused Reading" />
     <meta
       property="og:description"
-      content="Paste text, import documents, and read faster with adjustable pacing, highlighting, and distraction-free controls."
+      content="Paste text, import PDFs, and read faster with adjustable pacing, highlighting, and distraction-free controls."
     />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="ReadFast.live - Speed Reader for Focused Reading" />
+    <meta name="twitter:title" content="ReadFast.live - Free Speed Reader for Focused Reading" />
     <meta
       name="twitter:description"
-      content="Paste text, import documents, and read faster with adjustable pacing, highlighting, and distraction-free controls."
+      content="Paste text, import PDFs, and read faster with adjustable pacing, highlighting, and distraction-free controls."
     />
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "ReadFast.live",
-        "alternateName": "ReadFast",
-        "url": "https://www.readfast.live/",
-        "applicationCategory": "EducationalApplication",
-        "operatingSystem": "Web",
-        "description": "A focused speed reader for pasting text, importing documents, and reading with adjustable pacing, highlighting, and distraction-free controls.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        }
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://www.readfast.live/#website",
+            "name": "ReadFast.live",
+            "alternateName": ["ReadFast", "Read Fast", "FastRead"],
+            "url": "https://www.readfast.live/",
+            "description": "A free speed reader for focused reading with adjustable pacing, PDF import, and distraction-free controls.",
+            "inLanguage": "en-US",
+            "publisher": {
+              "@id": "https://www.readfast.live/#organization"
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://www.readfast.live/#organization",
+            "name": "ReadFast.live",
+            "url": "https://www.readfast.live/"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://www.readfast.live/#app",
+            "name": "ReadFast.live",
+            "alternateName": ["ReadFast", "Read Fast", "FastRead"],
+            "url": "https://www.readfast.live/",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web",
+            "browserRequirements": "Requires JavaScript",
+            "description": "A free browser-based speed reader for pasting text, importing PDFs, and reading with adjustable words-per-minute pacing.",
+            "featureList": [
+              "Paste text into a speed reader",
+              "Import PDF documents",
+              "Adjust words per minute",
+              "Change word chunk size",
+              "Read in a distraction-free interface"
+            ],
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          }
+        ]
       }
     </script>
   </head>
   <body>
     <div id="app"></div>
+    <noscript>
+      <main>
+        <h1>ReadFast.live</h1>
+        <p>
+          ReadFast.live is a free speed reader for focused reading. Paste text, import PDFs, adjust words per minute,
+          and read faster in a distraction-free browser interface.
+        </p>
+        <nav aria-label="ReadFast.live pages">
+          <a href="/">ReadFast.live speed reader</a>
+          <a href="/about/">About ReadFast.live</a>
+          <a href="/speed-reader/">Free speed reader</a>
+        </nav>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
