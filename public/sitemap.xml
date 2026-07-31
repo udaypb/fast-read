@@ -31,6 +31,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.readfast.live/read-fast/</loc>
+    <lastmod>2026-07-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.readfast.live/rsvp-reader/</loc>
     <lastmod>2026-07-31</lastmod>
     <changefreq>monthly</changefreq>
