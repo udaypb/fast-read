@@ -46,7 +46,7 @@ function normalizeFramesPerReel(value: number | undefined): number {
     return DEFAULT_FRAMES_PER_REEL;
   }
 
-  return Math.max(20, Math.min(160, Math.round(value ?? DEFAULT_FRAMES_PER_REEL)));
+  return Math.max(20, Math.min(1000, Math.round(value ?? DEFAULT_FRAMES_PER_REEL)));
 }
 
 export function createLocalRenderModel(

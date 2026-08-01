@@ -241,7 +241,7 @@ export class SettingsPanel {
         [
             { label: 'Short', value: 40 },
             { label: 'Medium', value: 80 },
-            { label: 'Long', value: 120 }
+            { label: 'Long', value: 160 }
         ].forEach((option) => {
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -780,19 +780,21 @@ export class SettingsPanel {
     }
 
     public setReelLength(framesPerReel: number): void {
-        const allowed = [40, 80, 120];
-        this.reelLengthFrames = allowed.includes(framesPerReel) ? framesPerReel : 40;
+        const allowed = [40, 80, 160];
+        this.reelLengthFrames = Number.isFinite(framesPerReel) ? Math.round(framesPerReel) : 40;
         if (this.reelLengthValue) {
             const label = this.reelLengthFrames === 40
                 ? 'Short'
                 : this.reelLengthFrames === 80
                     ? 'Medium'
-                    : 'Long';
+                    : this.reelLengthFrames === 160
+                        ? 'Long'
+                        : 'Auto';
             this.reelLengthValue.textContent = label;
         }
 
         this.reelLengthButtons.forEach((btn, index) => {
-            const value = [40, 80, 120][index];
+            const value = [40, 80, 160][index];
             btn.classList.toggle('settings-segmented-btn--active', value === this.reelLengthFrames);
         });
     }

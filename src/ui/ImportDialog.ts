@@ -3,7 +3,7 @@ export type ImportHandlers = {
   onImportFile: (file: File) => void;
 };
 
-const MAX_WORDS = 50000;
+const MAX_WORDS = 250000;
 
 export class ImportDialog {
   private root: HTMLElement;
@@ -70,7 +70,7 @@ export class ImportDialog {
 
     const textLabel = document.createElement('div');
     textLabel.className = 'import-label';
-    textLabel.textContent = 'Paste text (max 50,000 words)';
+    textLabel.textContent = 'Paste text or upload a PDF';
 
     this.textarea = document.createElement('textarea');
     this.textarea.className = 'import-textarea';

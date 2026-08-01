@@ -62,9 +62,9 @@ const confirmDialog = new ConfirmDialog();
 
 const DEFAULT_WPM = 250;
 const DEFAULT_CHUNK_SIZE = 1;
-const REEL_LENGTH_OPTIONS = [DEFAULT_FRAMES_PER_REEL, 80, 120] as const;
+const REEL_LENGTH_OPTIONS = [DEFAULT_FRAMES_PER_REEL, 80, 160] as const;
+const MAX_AUTO_FRAMES_PER_REEL = 1000;
 const REEL_PAGE_LIMIT = 5;
-const MAX_LOCAL_TEXT_WORDS = 50000;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const textProcessor = new TextProcessorClient();
 const CYCLABLE_BACKGROUND_CATEGORIES = new Set([
@@ -245,9 +245,22 @@ function applyChunkSize(chunkSize: number): void {
 }
 
 function normalizeFramesPerReel(framesPerReel: number): number {
-  return REEL_LENGTH_OPTIONS.includes(framesPerReel as typeof REEL_LENGTH_OPTIONS[number])
-    ? framesPerReel
-    : DEFAULT_FRAMES_PER_REEL;
+  if (!Number.isFinite(framesPerReel)) {
+    return DEFAULT_FRAMES_PER_REEL;
+  }
+
+  return Math.max(DEFAULT_FRAMES_PER_REEL, Math.min(MAX_AUTO_FRAMES_PER_REEL, Math.round(framesPerReel)));
+}
+
+function getUploadFramesPerReel(wordCount: number): number {
+  if (wordCount <= 1000) {
+    return currentFramesPerReel;
+  }
+
+  return Math.max(
+    currentFramesPerReel,
+    Math.min(MAX_AUTO_FRAMES_PER_REEL, Math.ceil(wordCount / 80))
+  );
 }
 
 const reelState = {
@@ -722,14 +735,13 @@ async function ingestDocument(
       throw new Error('No readable text was found in this document.');
     }
 
-    if (wordCount > MAX_LOCAL_TEXT_WORDS) {
-      throw new Error(`Please use ${MAX_LOCAL_TEXT_WORDS.toLocaleString()} words or fewer.`);
-    }
-
     reelsPlayer.setLoading(true, 'Building reels...');
+    const framesPerReel = getUploadFramesPerReel(wordCount);
+    currentFramesPerReel = framesPerReel;
+    settingsPanel.setReelLength(framesPerReel);
     const { frames } = await textProcessor.process(text, currentChunkSize);
     const docId = createLocalDocId();
-    const { reels } = createLocalRenderModel(docId, frames, { framesPerReel: currentFramesPerReel });
+    const { reels } = createLocalRenderModel(docId, frames, { framesPerReel });
     const firstReelId = reels[0]?.reelId ?? null;
     const nowIso = new Date().toISOString();
 
@@ -738,7 +750,7 @@ async function ingestDocument(
       label: options.sessionLabel,
       reels,
       activeReelId: firstReelId,
-      reelLengthFrames: currentFramesPerReel,
+      reelLengthFrames: framesPerReel,
       createdAt: nowIso,
       updatedAt: nowIso
     };
