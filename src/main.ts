@@ -691,12 +691,10 @@ async function ingestDocument(
   readText: () => Promise<string>,
   options: { sessionLabel: string; loadingText: string; railStatus: string }
 ): Promise<void> {
-  const previousDocId = reelState.docId || null;
-  const previousActiveReelId = reelState.activeReelId;
-  const shouldActivateNewSession = !previousDocId;
+  const hasActiveSession = Boolean(reelState.docId);
 
   closeReelStream();
-  if (!shouldActivateNewSession) {
+  if (hasActiveSession) {
     reader.pause();
   }
   reelRail.setLoading(true);
@@ -752,16 +750,6 @@ async function ingestDocument(
     reelRail.setLoading(false);
     importDialog.setMinimized(true);
     importDialog.setButtonText('+ Add more');
-
-    if (!shouldActivateNewSession) {
-      const activeSession = previousDocId ? sessionCache.get(previousDocId) : null;
-      reelsPlayer.updateStatus(activeSession?.reels.length ?? 0, true);
-      syncRailFromSessions({
-        currentUploadId: previousDocId,
-        activeReelId: previousActiveReelId
-      });
-      return;
-    }
 
     activeText = text;
     restoreSession(session);
