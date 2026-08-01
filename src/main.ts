@@ -65,6 +65,7 @@ const DEFAULT_CHUNK_SIZE = 1;
 const REEL_LENGTH_OPTIONS = [DEFAULT_FRAMES_PER_REEL, 80, 120] as const;
 const REEL_PAGE_LIMIT = 5;
 const MAX_LOCAL_TEXT_WORDS = 50000;
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const textProcessor = new TextProcessorClient();
 const CYCLABLE_BACKGROUND_CATEGORIES = new Set([
   'satisfying',
@@ -672,7 +673,10 @@ async function deleteReelFromSession(reelToDelete: Reel): Promise<void> {
 }
 
 async function ingestFile(file: File): Promise<void> {
-  await ingestDocument(() => extractReadableTextFromFile(file), {
+  await ingestDocument(() => {
+    validateUploadFile(file);
+    return extractReadableTextFromFile(file);
+  }, {
     sessionLabel: buildSessionLabel('file', reelState.documentCount + 1, file.name),
     loadingText: file.type === 'application/pdf' ? 'Reading PDF...' : 'Reading file...',
     railStatus: 'Reading your file locally...'
@@ -759,19 +763,48 @@ async function ingestDocument(
     }
   } catch (error) {
     console.error(error);
+    const message = getUploadErrorMessage(error);
     reelRail.show();
-    reelRail.setStatus(error instanceof Error ? error.message : 'Failed to process document. Please try again.');
+    reelRail.setStatus(message);
     reelRail.setLoading(false);
     reelsPlayer.setLoading(false);
     reelRail.setCooking(false);
-    importDialog.setButtonText(reelState.docId ? '+ Add more' : 'Upload another PDF or text');
+    importDialog.setButtonText(reelState.docId ? '+ Add more' : 'Try another PDF or text');
     importDialog.setMinimized(Boolean(reelState.docId));
+    importDialog.showError(message);
   }
+}
+
+function validateUploadFile(file: File): void {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`Use a file up to ${formatFileSize(MAX_UPLOAD_BYTES)}. This file is ${formatFileSize(file.size)}.`);
+  }
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(bytes % (1024 * 1024) === 0 ? 0 : 1)} MB`;
+  }
+  if (bytes >= 1024) {
+    return `${Math.ceil(bytes / 1024)} KB`;
+  }
+  return `${bytes} B`;
+}
+
+function getUploadErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return 'Failed to process this document. Please try a PDF or text file up to 10 MB.';
 }
 
 async function extractReadableTextFromFile(file: File): Promise<string> {
   if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-    return extractTextFromPdf(file);
+    const text = await extractTextFromPdf(file);
+    if (!text.trim()) {
+      throw new Error('No selectable text was found in this PDF. Scanned/image-only PDFs are not supported yet.');
+    }
+    return text;
   }
 
   if (isTextLikeFile(file)) {

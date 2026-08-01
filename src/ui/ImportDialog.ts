@@ -191,6 +191,11 @@ export class ImportDialog {
   setButtonText(text: string): void {
     this.mainButton.textContent = text;
   }
+
+  showError(message: string): void {
+    this.errorText.textContent = message;
+    this.overlay.classList.add('import-overlay--open');
+  }
 }
 
 function countWords(text: string): number {
