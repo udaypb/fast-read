@@ -1103,7 +1103,7 @@ body.settings-sheet-open .import-root {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s ease;
-  z-index: 12000;
+  z-index: 2147483000;
 }
 
 .confirm-overlay--open {
